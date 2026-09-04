@@ -1,5 +1,12 @@
 tag next
 --------------------------------
+- ffmpeg: upgrade to upstream n7.1 (Bilibili fork ff4.0 baseline kept for ijk patch extraction)
+- android: NDK r28 clang-only toolchain, arm64/x86_64 only, 16K page alignment
+- ijkmedia: port C layer to n7.1 (send/receive decode, AVChannelLayout, const AVCodec, ch_layouts)
+- ijkmedia: ijklas/ijklivehook move to patches-ffmpeg7 (FFInputFormat internalized in n7.1)
+
+tag k0.8.8-ffmpeg4.0 (upstream)
+--------------------------------
 - ffmpeg: upgrade to 4.0
 
 tag k0.8.8
