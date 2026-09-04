@@ -15,9 +15,7 @@
 # limitations under the License.
 #
 
-# This script is based on projects below
-# https://github.com/yixia/FFmpeg-Android
-# http://git.videolan.org/?p=vlc-ports/android.git;a=summary
+# Modernized for NDK r28 (clang-only, no gcc/standalone toolchain).
 
 #--------------------
 set -e
@@ -26,74 +24,37 @@ UNAME_S=$(uname -s)
 UNAME_SM=$(uname -sm)
 echo "build on $UNAME_SM"
 
+# Shared derivation: ANDROID_NDK explicit > ANDROID_HOME/ndk/28.* (highest).
+IJK_ENV_NDK_SH="$(dirname "$0")/../../tools/env-ndk.sh"
+if [ -f "$IJK_ENV_NDK_SH" ]; then
+    . "$IJK_ENV_NDK_SH"
+fi
+
 echo "ANDROID_NDK=$ANDROID_NDK"
 
 if [ -z "$ANDROID_NDK" ]; then
-    echo "You must define ANDROID_NDK before starting."
-    echo "They must point to your NDK directories."
+    echo "You must define ANDROID_NDK (or ANDROID_HOME with ndk/28.*) before starting."
     echo ""
     exit 1
 fi
 
-
-
-# try to detect NDK version
-export IJK_GCC_VER=4.9
-export IJK_GCC_64_VER=4.9
-export IJK_MAKE_TOOLCHAIN_FLAGS=
-export IJK_MAKE_FLAG=
-export IJK_NDK_REL=$(grep -o '^r[0-9]*.*' $ANDROID_NDK/RELEASE.TXT 2>/dev/null | sed 's/[[:space:]]*//g' | cut -b2-)
+# try to detect NDK version (r28 baseline, clang-only)
+export IJK_NDK_REL=$(grep -o '^Pkg\.Revision.*=[0-9]*.*' $ANDROID_NDK/source.properties 2>/dev/null | sed 's/[[:space:]]*//g' | cut -d "=" -f 2)
+echo "IJK_NDK_REL=$IJK_NDK_REL"
 case "$IJK_NDK_REL" in
-    10e*)
-        # we don't use 4.4.3 because it doesn't handle threads correctly.
-        if test -d ${ANDROID_NDK}/toolchains/arm-linux-androideabi-4.8
-        # if gcc 4.8 is present, it's there for all the archs (x86, mips, arm)
-        then
-            echo "NDKr$IJK_NDK_REL detected"
-
-            case "$UNAME_S" in
-                Darwin)
-                    export IJK_MAKE_TOOLCHAIN_FLAGS="$IJK_MAKE_TOOLCHAIN_FLAGS --system=darwin-x86_64"
-                ;;
-                CYGWIN_NT-*)
-                    export IJK_MAKE_TOOLCHAIN_FLAGS="$IJK_MAKE_TOOLCHAIN_FLAGS --system=windows-x86_64"
-                ;;
-            esac
-        else
-            echo "You need the NDKr10e or later"
-            exit 1
-        fi
+    28*)
+        echo "NDKr$IJK_NDK_REL detected"
     ;;
     *)
-        IJK_NDK_REL=$(grep -o '^Pkg\.Revision.*=[0-9]*.*' $ANDROID_NDK/source.properties 2>/dev/null | sed 's/[[:space:]]*//g' | cut -d "=" -f 2)
-        echo "IJK_NDK_REL=$IJK_NDK_REL"
-        case "$IJK_NDK_REL" in
-            11*|12*|13*|14*)
-                if test -d ${ANDROID_NDK}/toolchains/arm-linux-androideabi-4.9
-                then
-                    echo "NDKr$IJK_NDK_REL detected"
-                else
-                    echo "You need the NDKr10e or later"
-                    exit 1
-                fi
-            ;;
-            *)
-                echo "You need the NDKr10e or later"
-                exit 1
-            ;;
-        esac
+        echo "You need NDK r28 (28.*). Set ANDROID_NDK to an r28 install."
+        exit 1
     ;;
 esac
 
-
+# parallel build flag
+export IJK_MAKE_FLAG=
 case "$UNAME_S" in
     Darwin)
         export IJK_MAKE_FLAG=-j`sysctl -n machdep.cpu.thread_count`
-    ;;
-    CYGWIN_NT-*)
-        IJK_WIN_TEMP="$(cygpath -am /tmp)"
-        export TEMPDIR=$IJK_WIN_TEMP/
-
-        echo "Cygwin temp prefix=$IJK_WIN_TEMP/"
     ;;
 esac

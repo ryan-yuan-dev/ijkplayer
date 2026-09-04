@@ -16,11 +16,12 @@
 # limitations under the License.
 #
 
-# IJK_FFMPEG_UPSTREAM=git://git.videolan.org/ffmpeg.git
-IJK_FFMPEG_UPSTREAM=https://github.com/Bilibili/FFmpeg.git
-IJK_FFMPEG_FORK=https://github.com/Bilibili/FFmpeg.git
-IJK_FFMPEG_COMMIT=ff4.0--ijk0.8.8--20210426--001
+# IJK_FFMPEG_UPSTREAM=https://github.com/Bilibili/FFmpeg.git
+IJK_FFMPEG_UPSTREAM=https://github.com/FFmpeg/FFmpeg.git
+IJK_FFMPEG_FORK=https://github.com/FFmpeg/FFmpeg.git
+IJK_FFMPEG_COMMIT=n7.1
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
+IJK_FFMPEG_PATCH_DIR=android/patches-ffmpeg7
 
 set -e
 TOOLS=tools
@@ -36,13 +37,18 @@ function pull_fork()
     sh $TOOLS/pull-repo-ref.sh $IJK_FFMPEG_FORK android/contrib/ffmpeg-$1 ${IJK_FFMPEG_LOCAL_REPO}
     cd android/contrib/ffmpeg-$1
     git checkout ${IJK_FFMPEG_COMMIT} -B ijkplayer
+    if [ -d "../../patches-ffmpeg7" ]; then
+        for p in ../../patches-ffmpeg7/*.patch; do
+            if [ -f "$p" ]; then
+                echo "== apply patch $p =="
+                patch -p1 < "$p"
+            fi
+        done
+    fi
     cd -
 }
 
-pull_fork "armv5"
-pull_fork "armv7a"
 pull_fork "arm64"
-pull_fork "x86"
 pull_fork "x86_64"
 
 ./init-config.sh
