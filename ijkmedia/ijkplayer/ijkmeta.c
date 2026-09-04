@@ -22,6 +22,7 @@
  */
 
 #include "ijkmeta.h"
+#include "libavutil/channel_layout.h"
 #include "ff_ffinc.h"
 #include "ijksdl/ijksdl_misc.h"
 
@@ -165,7 +166,7 @@ static int64_t get_bit_rate(AVCodecParameters *codecpar)
             break;
         case AVMEDIA_TYPE_AUDIO:
             bits_per_sample = av_get_bits_per_sample(codecpar->codec_id);
-            bit_rate = bits_per_sample ? codecpar->sample_rate * codecpar->channels * bits_per_sample : codecpar->bit_rate;
+            bit_rate = bits_per_sample ? codecpar->sample_rate * codecpar->ch_layout.nb_channels * bits_per_sample : codecpar->bit_rate;
             break;
         default:
             bit_rate = 0;
@@ -256,8 +257,15 @@ void ijkmeta_set_avformat_context_l(IjkMediaMeta *meta, AVFormatContext *ic)
 
                 if (codecpar->sample_rate)
                     ijkmeta_set_int64_l(stream_meta, IJKM_KEY_SAMPLE_RATE, codecpar->sample_rate);
-                if (codecpar->channel_layout)
-                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_CHANNEL_LAYOUT, codecpar->channel_layout);
+                /* n7.1: AVCodecParameters.channels/channel_layout removed; use ch_layout.
+                 * Keep IJKM_KEY_CHANNEL_LAYOUT as legacy mask when order is NATIVE. */
+                if (codecpar->ch_layout.nb_channels > 0) {
+                    uint64_t mask = 0;
+                    if (codecpar->ch_layout.order == AV_CHANNEL_ORDER_NATIVE)
+                        mask = codecpar->ch_layout.u.mask;
+                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_CHANNEL_LAYOUT, (int64_t)mask);
+                    ijkmeta_set_int64_l(stream_meta, IJKM_KEY_CHANNELS, codecpar->ch_layout.nb_channels);
+                }
                 break;
             }
             case AVMEDIA_TYPE_SUBTITLE: {

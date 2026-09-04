@@ -1529,7 +1529,7 @@ static int drain_output_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeU
                 }
             }
         }
-        ret = ffp_queue_picture(ffp, frame, pts, duration, av_frame_get_pkt_pos(frame), is->viddec.pkt_serial);
+        ret = ffp_queue_picture(ffp, frame, pts, duration, -1, is->viddec.pkt_serial);
         if (ret) {
             if (frame->opaque)
                 SDL_VoutAndroid_releaseBufferProxyP(opaque->weak_vout, (SDL_AMediaCodecBufferProxy **)&frame->opaque, false);
@@ -1670,7 +1670,7 @@ static int func_run_sync(IJKFF_Pipenode *node)
                     }
                 }
             }
-            ret = ffp_queue_picture(ffp, frame, pts, duration, av_frame_get_pkt_pos(frame), is->viddec.pkt_serial);
+            ret = ffp_queue_picture(ffp, frame, pts, duration, -1, is->viddec.pkt_serial);
             if (ret) {
                 if (frame->opaque)
                     SDL_VoutAndroid_releaseBufferProxyP(opaque->weak_vout, (SDL_AMediaCodecBufferProxy **)&frame->opaque, false);

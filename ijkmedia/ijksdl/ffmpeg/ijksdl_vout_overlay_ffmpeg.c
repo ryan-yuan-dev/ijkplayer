@@ -67,17 +67,9 @@ static AVFrame *opaque_setup_frame(SDL_VoutOverlay_Opaque* opaque, enum AVPixelF
         return NULL;
     }
 
-    /*-
-     * Lazily allocate frame buffer in opaque_obtain_managed_frame_buffer
-     *
-     * For refererenced frame management, we use buffer allocated by decoder
-     *
-    int frame_bytes = avpicture_get_size(format, width, height);
-    AVBufferRef *frame_buffer_ref = av_buffer_alloc(frame_bytes);
-    if (!frame_buffer_ref)
-        return NULL;
-    opaque->frame_buffer  = frame_buffer_ref;
-     */
+    /* n7.1: managed frame buffer allocated lazily in
+     * opaque_obtain_managed_frame_buffer; legacy avpicture_get_size
+     * block removed (API deleted in FFmpeg 5.x). */
 
     managed_frame->format = format;
     managed_frame->width  = width;

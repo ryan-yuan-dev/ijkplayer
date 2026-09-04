@@ -53,8 +53,12 @@ LOCAL_SRC_FILES += android/pipeline/ffpipenode_android_mediacodec_vdec.c
 
 LOCAL_SRC_FILES += ijkavformat/allformats.c
 LOCAL_SRC_FILES += ijkavformat/cJSON.c
-LOCAL_SRC_FILES += ijkavformat/ijklas.c
-LOCAL_SRC_FILES += ijkavformat/ijklivehook.c
+# n7.1: ijklas/ijklivehook use internal FFInputFormat callbacks
+# (read_probe/read_header/read_packet/...) which no longer exist on public
+# AVInputFormat. Sources stay in tree for android/patches-ffmpeg7/ (R1)
+# but must not compile into libijkplayer.
+# LOCAL_SRC_FILES += ijkavformat/ijklas.c
+# LOCAL_SRC_FILES += ijkavformat/ijklivehook.c
 LOCAL_SRC_FILES += ijkavformat/ijkmediadatasource.c
 LOCAL_SRC_FILES += ijkavformat/ijkio.c
 LOCAL_SRC_FILES += ijkavformat/ijkiomanager.c

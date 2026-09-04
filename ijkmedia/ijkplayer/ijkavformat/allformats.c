@@ -25,45 +25,9 @@
 #include "libavformat/url.h"
 #include "libavformat/version.h"
 
-#define IJK_REGISTER_DEMUXER(x)                                         \
-    {                                                                   \
-        extern AVInputFormat ijkff_##x##_demuxer;                       \
-        ijkav_register_input_format(&ijkff_##x##_demuxer);               \
-    }
-
-#define IJK_REGISTER_PROTOCOL(x)                                        \
-    {                                                                   \
-        extern URLProtocol ijkimp_ff_##x##_protocol;                     \
-        av_log(NULL, AV_LOG_WARNING, "skip protocol %s (FFmpeg-tree patch required, see android/patches-ffmpeg7/)\n", #x); \
-    }
-
-static const AVInputFormat *ijkav_find_input_format(const char *iformat_name)
-{
-    const AVInputFormat *fmt = NULL;
-    void *opaque = NULL;
-    if (!iformat_name)
-        return NULL;
-    while ((fmt = av_demuxer_iterate(&opaque))) {
-        if (!fmt->name)
-            continue;
-        if (!strcmp(iformat_name, fmt->name))
-            return fmt;
-    }
-    return NULL;
-}
-
-static void ijkav_register_input_format(const AVInputFormat *iformat)
-{
-    if (ijkav_find_input_format(iformat->name)) {
-        av_log(NULL, AV_LOG_WARNING, "skip     demuxer : %s (duplicated)\n", iformat->name);
-    } else {
-        /* n7.1: no runtime av_register_input_format. ijk demuxers must be
-         * registered in FFmpeg tree via android/patches-ffmpeg7/ (R1).
-         * Keep object linked; log only. */
-        av_log(NULL, AV_LOG_WARNING, "skip     demuxer : %s (FFmpeg-tree patch required, see android/patches-ffmpeg7/)\n", iformat->name);
-    }
-}
-
+/* n7.1: ijk custom protocols/demuxers register in FFmpeg tree via
+ * android/patches-ffmpeg7/ (R1). This translation unit keeps
+ * ijkav_register_all() as a no-op marker so call sites stay unchanged. */
 
 void ijkav_register_all(void)
 {
@@ -74,20 +38,5 @@ void ijkav_register_all(void)
     initialized = 1;
 
     /* n7.1: av_register_all() removed (static registration). No-op. */
-
-    /* protocols */
-    av_log(NULL, AV_LOG_INFO, "===== custom modules begin =====\n");
-#ifdef __ANDROID__
-    IJK_REGISTER_PROTOCOL(ijkmediadatasource);
-#endif
-    IJK_REGISTER_PROTOCOL(ijkio);
-    IJK_REGISTER_PROTOCOL(async);
-    IJK_REGISTER_PROTOCOL(ijklongurl);
-    IJK_REGISTER_PROTOCOL(ijktcphook);
-    IJK_REGISTER_PROTOCOL(ijkhttphook);
-    IJK_REGISTER_PROTOCOL(ijksegment);
-    /* demuxers */
-    IJK_REGISTER_DEMUXER(ijklivehook);
-    IJK_REGISTER_DEMUXER(ijklas);
-    av_log(NULL, AV_LOG_INFO, "===== custom modules end =====\n");
+    av_log(NULL, AV_LOG_INFO, "ijkav_register_all: custom modules register via patches-ffmpeg7 (R1)\n");
 }
