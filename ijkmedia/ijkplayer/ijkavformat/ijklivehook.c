@@ -88,8 +88,6 @@ static int ijklivehook_read_close(AVFormatContext *avf)
     return 0;
 }
 
-// FIXME: install libavformat/internal.h
-int ff_alloc_extradata(AVCodecParameters *par, int size);
 
 static int copy_stream_props(AVStream *st, AVStream *source_st)
 {
@@ -97,14 +95,13 @@ static int copy_stream_props(AVStream *st, AVStream *source_st)
 
     if (st->codecpar->codec_id || !source_st->codecpar->codec_id) {
         if (st->codecpar->extradata_size < source_st->codecpar->extradata_size) {
-            if (st->codecpar->extradata) {
-                av_freep(&st->codecpar->extradata);
-                st->codecpar->extradata_size = 0;
-            }
-            ret = ff_alloc_extradata(st->codecpar,
-                                     source_st->codecpar->extradata_size);
-            if (ret < 0)
-                return ret;
+            /* n7.1: ff_alloc_extradata is internal/hidden. Allocate inline. */
+            av_freep(&st->codecpar->extradata);
+            st->codecpar->extradata = av_mallocz(source_st->codecpar->extradata_size +
+                                                AV_INPUT_BUFFER_PADDING_SIZE);
+            if (!st->codecpar->extradata)
+                return AVERROR(ENOMEM);
+            st->codecpar->extradata_size = source_st->codecpar->extradata_size;
         }
         memcpy(st->codecpar->extradata, source_st->codecpar->extradata,
                source_st->codecpar->extradata_size);

@@ -204,8 +204,9 @@ static int packet_queue_put(PacketQueue *q, AVPacket *pkt)
 
 static int packet_queue_put_nullpacket(PacketQueue *q, int stream_index)
 {
-    AVPacket pkt1, *pkt = &pkt1;
-    av_init_packet(pkt);
+    AVPacket pkt1;
+    AVPacket *pkt = &pkt1;
+    memset(pkt, 0, sizeof(*pkt));
     pkt->data = NULL;
     pkt->size = 0;
     pkt->stream_index = stream_index;
@@ -431,7 +432,7 @@ static int convert_image(FFPlayer *ffp, AVFrame *src_frame, int64_t src_frame_pt
     dst_width = img_info->width;
     dst_height = img_info->height;
 
-    av_init_packet(&avpkt);
+    memset(&avpkt, 0, sizeof(avpkt));
     avpkt.size = 0;
     avpkt.data = NULL;
 
@@ -2856,23 +2857,17 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
     }
     av_codec_set_lowres(avctx, stream_lowres);
 
-#if FF_API_EMU_EDGE
-    if(stream_lowres) avctx->flags |= CODEC_FLAG_EMU_EDGE;
-#endif
+    /* n7.1: CODEC_FLAG_EMU_EDGE removed (edge emulation is default);
+     * AV_CODEC_FLAG2_FAST kept. refcounted_frames removed (7.x always refcounted). */
     if (ffp->fast)
         avctx->flags2 |= AV_CODEC_FLAG2_FAST;
-#if FF_API_EMU_EDGE
-    if(codec->capabilities & AV_CODEC_CAP_DR1)
-        avctx->flags |= CODEC_FLAG_EMU_EDGE;
-#endif
 
     opts = filter_codec_opts(ffp->codec_opts, avctx->codec_id, ic, ic->streams[stream_index], codec);
     if (!av_dict_get(opts, "threads", NULL, 0))
         av_dict_set(&opts, "threads", "auto", 0);
     if (stream_lowres)
         av_dict_set_int(&opts, "lowres", stream_lowres, 0);
-    if (avctx->codec_type == AVMEDIA_TYPE_VIDEO || avctx->codec_type == AVMEDIA_TYPE_AUDIO)
-        av_dict_set(&opts, "refcounted_frames", "1", 0);
+    /* n7.1: 7.x decoders always use refcounted frames; option removed. */
     if ((ret = avcodec_open2(avctx, codec, &opts)) < 0) {
         goto fail;
     }
@@ -3872,14 +3867,9 @@ void ffp_global_init()
 
     ALOGD("ijkmediaplayer version : %s", ijkmp_version());
     /* register all codecs, demux and protocols */
-    avcodec_register_all();
-#if CONFIG_AVDEVICE
-    avdevice_register_all();
-#endif
-#if CONFIG_AVFILTER
-    avfilter_register_all();
-#endif
-    av_register_all();
+    /* n7.1: avcodec_register_all/avdevice_register_all/avfilter_register_all/
+     * av_register_all removed (static registration). ijk custom modules
+     * register via android/patches-ffmpeg7/ (R1). */
 
     ijkav_register_all();
 
@@ -3888,7 +3878,7 @@ void ffp_global_init()
     av_lockmgr_register(lockmgr);
     av_log_set_callback(ffp_log_callback_brief);
 
-    av_init_packet(&flush_pkt);
+    memset(&flush_pkt, 0, sizeof(flush_pkt));
     flush_pkt.data = (uint8_t *)&flush_pkt;
 
     g_ffmpeg_global_inited = true;

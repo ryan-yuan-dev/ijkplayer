@@ -79,7 +79,7 @@ typedef struct IJKFF_Pipenode_Opaque {
 
     AVCodecContext           *avctx; // not own
     AVCodecParameters        *codecpar;
-    AVBitStreamFilterContext *bsfc;  // own
+    // n7.1: legacy AVBitStreamFilterContext removed (bsfc path disabled via AMC_USE_AVBITSTREAM_FILTER=0).
 
 #if AMC_USE_AVBITSTREAM_FILTER
     uint8_t                  *orig_extradata;
@@ -519,20 +519,25 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
             size_data = av_packet_get_side_data(avpkt, AV_PKT_DATA_NEW_EXTRADATA, &size_data_size);
             // minimum avcC(sps,pps) = 7
             if (size_data && size_data_size >= 7) {
-                int             got_picture = 0;
                 AVFrame        *frame      = av_frame_alloc();
                 AVDictionary   *codec_opts = NULL;
                 const AVCodec  *codec      = opaque->decoder->avctx->codec;
-                AVCodecContext *new_avctx  = avcodec_alloc_context3(codec);
+                AVCodecContext *new_avctx  = NULL;
                 int change_ret = 0;
 
-                if (!new_avctx)
+                if (!frame)
                     return AVERROR(ENOMEM);
+                new_avctx = avcodec_alloc_context3(codec);
+                if (!new_avctx) {
+                    av_frame_free(&frame);
+                    return AVERROR(ENOMEM);
+                }
 
                 avcodec_parameters_to_context(new_avctx, opaque->codecpar);
                 av_freep(&new_avctx->extradata);
                 new_avctx->extradata = av_mallocz(size_data_size + AV_INPUT_BUFFER_PADDING_SIZE);
                 if (!new_avctx->extradata) {
+                    av_frame_free(&frame);
                     avcodec_free_context(&new_avctx);
                     return AVERROR(ENOMEM);
                 }
@@ -543,12 +548,22 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
                 change_ret = avcodec_open2(new_avctx, codec, &codec_opts);
                 av_dict_free(&codec_opts);
                 if (change_ret < 0) {
+                    av_frame_free(&frame);
                     avcodec_free_context(&new_avctx);
                     return change_ret;
                 }
 
-                change_ret = avcodec_decode_video2(new_avctx, frame, &got_picture, avpkt);
-                if (change_ret < 0) {
+                change_ret = avcodec_send_packet(new_avctx, avpkt);
+                if (change_ret < 0 && change_ret != AVERROR(EAGAIN)) {
+                    av_frame_free(&frame);
+                    avcodec_free_context(&new_avctx);
+                    return change_ret;
+                }
+                change_ret = avcodec_receive_frame(new_avctx, frame);
+                if (change_ret == AVERROR(EAGAIN) || change_ret == AVERROR_EOF) {
+                    change_ret = 0;
+                } else if (change_ret < 0) {
+                    av_frame_free(&frame);
                     avcodec_free_context(&new_avctx);
                     return change_ret;
                 } else {
@@ -561,7 +576,7 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
                     }
                 }
 
-                av_frame_unref(frame);
+                av_frame_free(&frame);
                 avcodec_free_context(&new_avctx);
             }
         }
@@ -767,19 +782,24 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
             size_data = av_packet_get_side_data(avpkt, AV_PKT_DATA_NEW_EXTRADATA, &size_data_size);
             // minimum avcC(sps,pps) = 7
             if (size_data && size_data_size >= 7) {
-                int             got_picture = 0;
                 AVFrame        *frame      = av_frame_alloc();
                 AVDictionary   *codec_opts = NULL;
                 const AVCodec  *codec      = opaque->decoder->avctx->codec;
-                AVCodecContext *new_avctx  = avcodec_alloc_context3(codec);
+                AVCodecContext *new_avctx  = NULL;
                 int change_ret = 0;
-                if (!new_avctx)
+                if (!frame)
                     return AVERROR(ENOMEM);
+                new_avctx = avcodec_alloc_context3(codec);
+                if (!new_avctx) {
+                    av_frame_free(&frame);
+                    return AVERROR(ENOMEM);
+                }
 
                 avcodec_parameters_to_context(new_avctx, opaque->codecpar);
                 av_freep(&new_avctx->extradata);
                 new_avctx->extradata = av_mallocz(size_data_size + AV_INPUT_BUFFER_PADDING_SIZE);
                 if (!new_avctx->extradata) {
+                    av_frame_free(&frame);
                     avcodec_free_context(&new_avctx);
                     return AVERROR(ENOMEM);
                 }
@@ -790,12 +810,22 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                 change_ret = avcodec_open2(new_avctx, codec, &codec_opts);
                 av_dict_free(&codec_opts);
                 if (change_ret < 0) {
+                    av_frame_free(&frame);
                     avcodec_free_context(&new_avctx);
                     return change_ret;
                 }
 
-                change_ret = avcodec_decode_video2(new_avctx, frame, &got_picture, avpkt);
-                if (change_ret < 0) {
+                change_ret = avcodec_send_packet(new_avctx, avpkt);
+                if (change_ret < 0 && change_ret != AVERROR(EAGAIN)) {
+                    av_frame_free(&frame);
+                    avcodec_free_context(&new_avctx);
+                    return change_ret;
+                }
+                change_ret = avcodec_receive_frame(new_avctx, frame);
+                if (change_ret == AVERROR(EAGAIN) || change_ret == AVERROR_EOF) {
+                    change_ret = 0;
+                } else if (change_ret < 0) {
+                    av_frame_free(&frame);
                     avcodec_free_context(&new_avctx);
                     return change_ret;
                 } else {
@@ -808,7 +838,7 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                     }
                 }
 
-                av_frame_unref(frame);
+                av_frame_free(&frame);
                 avcodec_free_context(&new_avctx);
             }
         }
