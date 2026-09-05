@@ -1,5 +1,12 @@
 # Handoff — 2026-09-06 M1 会话（Windows 主机）
 
+> **收尾更新（同日晚些）**：M1 Windows 构建验证全部完成——`libijkffmpeg.so` 双 ABI
+> （arm64/x86_64）均产出，exit 0。tcp.c 补丁已用修复后的 worktree 重新生成；额外修复
+> application.c/dns_cache/dict.c 的 include 与 `uintptr_t` 问题、Makefile 补 `nal.o`、
+> 构建脚本 RANLIB=llvm-ranlib、链接加 `-Wl,-Bsymbolic`、对象递归收集。详见
+> `docs/upgrade/2026-09-06-m1-ffmpeg-n71-baseline.md` 的"编译期修复"与"已验证"章节。
+> 下一步直接从 M2（Android ndk-build）开始。
+
 ## 本会话目标
 M0（文档基线）+ M1（FFmpeg n7.1 基线补全）——见 `docs/upgrade/` 两份阶段记录与 `docs/version-plan.md`。
 

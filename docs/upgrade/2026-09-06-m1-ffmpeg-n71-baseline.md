@@ -38,11 +38,35 @@ openssl 3.5 LTS、双平台脚本可跑，并在 Windows 上完成 Android 全�
 | host 编译器 | 无 gcc → 用 VS2022 自带 clang（`VC/Tools/Llvm/x64/bin/clang.exe`，能自动定位 MSVC/SDK 头）；路径带空格，复制到 `~/bin/host-clang.exe` 后传 `--host-cc` |
 | 环境变量 | `ANDROID_HOME`（系统已设）+ `ANDROID_NDK=$ANDROID_HOME/ndk/28.2.13676358` |
 
-## 已验证
+## 编译期修复（补丁集 + 构建脚本，2026-09-06 第二轮）
+首轮 Windows 构建暴露的问题，全部已修并回写 worktree（merge commit amend）+ 重生成对应补丁：
+
+**补丁集修复**（对应补丁已重新生成，android/ios 两份一致）：
+- `application.c` 缺 `libavutil/mem.h`、`libavutil/time.h`；`application.h` 缺 `<stdint.h>`（0100/0101）。
+- `dns_cache.h` 缺 `<stdint.h>`；`dns_cache.c` 缺 `libavutil/mem.h`/`<string.h>`/`<stdlib.h>`（0102/0103）。
+- `dict.c`：合并时 `av_dict_iterate` 残留 fork 的 `!key` 判断（该函数无 key 参数）；fork 新增的
+  `av_dict_get_intptr/av_dict_strtoptr` 里 `uintptr_t ptr = NULL` → `= 0`、`return NULL` → `return 0`
+  （C99 下 NULL 即 `((void*)0)`，赋给整数类型报错）（0106）。
+- `tcp.c`：`goto fail` → `fail1`（n7.1 `tcp_open` 只有 fail1 标签）；`tcp_fast_open` 里
+  `ff_socket/ff_listen` 补第 4 参 `h`；补 `libavutil/avstring.h` include（0222）。
+- `libavformat/Makefile`：fork 把 `avc.o` 加进了基础 OBJS，但其依赖的 `nal.o` 只在
+  `CONFIG_ISO_WRITER`（module-lite 下关闭）时编译 → 把 `nal.o` 一并加入基础 OBJS（0202）。
+
+**构建脚本修复**（`android/contrib/tools/do-compile-ffmpeg.sh`）：
+- `RANLIB` 显式传 `llvm-ranlib` 全路径：NDK r28 Windows 工具链无 `aarch64-linux-android-ranlib`。
+- 链接 libijkffmpeg.so 加 `-Wl,-Bsymbolic`：n7.1 新增 `libavutil/tx_float.c` 与
+  `libavutil/aarch64/tx_float_neon.S` 跨对象引用全局表，单 .so 直链下全局符号可被抢占，
+  lld 报 `R_AARCH64_ADR_PREL_PG_HI21 cannot be used against symbol`（上游按分库 + version
+  script 构建，符号为 local，无此问题）。
+- 链接对象收集改为**递归** `find *.o`：n7.1 把编解码器挪进子目录（`libavcodec/{aac,hevc,vvc,opus}/`），
+  原来只收顶层 `*.o` 会缺 `ff_hevc_decoder`、`ff_aac_decoder`、各类 bsf 等符号。
+
+## 已验证（Windows，2026-09-06 最终）
 - `init-android.sh`：克隆 ffmpeg-arm64/x86_64（extra/ffmpeg 作 reference）→ `checkout n7.1`
   → 31 个补丁全部干净应用；openssl/libyuv/soundtouch/config 正常。
 - `compile-openssl.sh all`：openssl-3.5.8 产出 `build/openssl-{arm64,x86_64}/output/lib/lib{ssl,crypto}.a`。
-- `compile-ffmpeg.sh arm64`：`build/ffmpeg-arm64/output/libijkffmpeg.so` 产出（exit 0）。
+- `compile-ffmpeg.sh arm64` + `compile-ffmpeg.sh x86_64`：均 exit 0，产出
+  `build/ffmpeg-{arm64,x86_64}/output/libijkffmpeg.so`（28.6MB / 30.0MB）。
 
 ## 已知问题 / 待办
 - [ ] `init-android.sh` 不幂等：重复运行时补丁二次应用而失败（与上游一致，后续加检测）。

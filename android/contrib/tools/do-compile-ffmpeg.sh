@@ -152,6 +152,7 @@ export CXX="$FF_LLVM_BIN/${FF_LLVM_TRIPLE}-clang++"
 export AR=$FF_LLVM_BIN/llvm-ar
 export NM=$FF_LLVM_BIN/llvm-nm
 export STRIP=$FF_LLVM_BIN/llvm-strip
+export RANLIB=$FF_LLVM_BIN/llvm-ranlib
 
 FF_CFLAGS="-O3 -Wall -pipe \
     -ffast-math \
@@ -210,6 +211,7 @@ FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-pic"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --cc=$CC"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --cxx=$CXX"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --ar=$AR"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --ranlib=$RANLIB"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --nm=$NM"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --strip=$STRIP"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --sysroot=$FF_SYSROOT"
@@ -276,25 +278,19 @@ echo $FF_EXTRA_LDFLAGS
 
 FF_C_OBJ_FILES=
 FF_ASM_OBJ_FILES=
+# n7.1: codecs live in per-codec subdirs (aac/, hevc/, vvc/, opus/, ...) and
+# arch asm in aarch64/ etc — collect every built object recursively.
 for MODULE_DIR in $FF_MODULE_DIRS
 do
-    C_OBJ_FILES="$MODULE_DIR/*.o"
-    if ls $C_OBJ_FILES 1> /dev/null 2>&1; then
-        echo "link $MODULE_DIR/*.o"
-        FF_C_OBJ_FILES="$FF_C_OBJ_FILES $C_OBJ_FILES"
+    if ls $MODULE_DIR/*.o 1> /dev/null 2>&1 || find "$MODULE_DIR" -mindepth 2 -name '*.o' 2>/dev/null | grep -q .; then
+        echo "link $MODULE_DIR (recursive)"
+        for OBJ_FILE in $(find "$MODULE_DIR" -name '*.o' | sort); do
+            FF_C_OBJ_FILES="$FF_C_OBJ_FILES $OBJ_FILE"
+        done
     fi
-
-    for ASM_SUB_DIR in $FF_ASSEMBLER_SUB_DIRS
-    do
-        ASM_OBJ_FILES="$MODULE_DIR/$ASM_SUB_DIR/*.o"
-        if ls $ASM_OBJ_FILES 1> /dev/null 2>&1; then
-            echo "link $MODULE_DIR/$ASM_SUB_DIR/*.o"
-            FF_ASM_OBJ_FILES="$FF_ASM_OBJ_FILES $ASM_OBJ_FILES"
-        fi
-    done
 done
 
-$CC -lm -lz -shared --sysroot=$FF_SYSROOT -Wl,--no-undefined -Wl,-z,noexecstack -Wl,-z,max-page-size=16384 $FF_EXTRA_LDFLAGS \
+$CC -lm -lz -shared --sysroot=$FF_SYSROOT -Wl,--no-undefined -Wl,-z,noexecstack -Wl,-z,max-page-size=16384 -Wl,-Bsymbolic $FF_EXTRA_LDFLAGS \
     -Wl,-soname,libijkffmpeg.so \
     $FF_C_OBJ_FILES \
     $FF_ASM_OBJ_FILES \

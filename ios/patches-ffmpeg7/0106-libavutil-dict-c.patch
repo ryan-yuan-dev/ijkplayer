@@ -1,16 +1,7 @@
 diff --git a/libavutil/dict.c b/libavutil/dict.c
-index 6fb09399ba..ac4ead3be6 100644
+index 6fb09399ba..f72d560eb0 100644
 --- a/libavutil/dict.c
 +++ b/libavutil/dict.c
-@@ -46,7 +46,7 @@ const AVDictionaryEntry *av_dict_iterate(const AVDictionary *m,
- {
-     int i = 0;
- 
--    if (!m)
-+    if (!m || !key)
-         return NULL;
- 
-     if (prev)
 @@ -173,6 +173,43 @@ int av_dict_set_int(AVDictionary **pm, const char *key, int64_t value,
      return av_dict_set(pm, key, valuestr, flags);
  }
@@ -25,23 +16,23 @@ index 6fb09399ba..ac4ead3be6 100644
 +}
 +
 +uintptr_t av_dict_get_intptr(const AVDictionary *m, const char* key) {
-+    uintptr_t ptr = NULL;
++    uintptr_t ptr = 0;
 +    AVDictionaryEntry *t = NULL;
 +    if ((t = av_dict_get(m, key, NULL, 0))) {
 +      return av_dict_strtoptr(t->value);
 +    }
-+    return NULL;
++    return 0;
 +}
 +
 +uintptr_t av_dict_strtoptr(char * value) {
-+   uintptr_t ptr = NULL;
++   uintptr_t ptr = 0;
 +   char *next = NULL;
 +   if(!value || value[0] !='0' || (value[1]|0x20)!='x') {
-+       return NULL;
++       return 0;
 +   }
 +   ptr = strtoull(value, &next, 16);
 +   if (next == value) {
-+       return NULL;
++       return 0;
 +   }
 +   return ptr;
 +}
