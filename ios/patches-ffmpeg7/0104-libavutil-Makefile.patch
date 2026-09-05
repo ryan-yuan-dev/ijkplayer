@@ -1,5 +1,5 @@
 diff --git a/libavutil/Makefile b/libavutil/Makefile
-index 6e6fa8d800..db28e9b3be 100644
+index 6e6fa8d800..434286c70e 100644
 --- a/libavutil/Makefile
 +++ b/libavutil/Makefile
 @@ -4,6 +4,7 @@ DESC = FFmpeg utility library
@@ -18,16 +18,20 @@ index 6e6fa8d800..db28e9b3be 100644
            error.h                                                       \
            eval.h                                                        \
            executor.h                                                    \
-@@ -92,6 +94,9 @@ HEADERS = adler32.h                                                     \
+@@ -92,10 +94,13 @@ HEADERS = adler32.h                                                     \
            video_enc_params.h                                            \
            xtea.h                                                        \
            tea.h                                                         \
 +          thread.h                                                      \
-+
-+HEADERS-$(CONFIG_LZO)                   += lzo.h
            tx.h                                                          \
            film_grain_params.h                                           \
            video_hint.h
+ 
++HEADERS-$(CONFIG_LZO)                   += lzo.h
++
+ ARCH_HEADERS = bswap.h                                                  \
+                intmath.h                                                \
+                intreadwrite.h                                           \
 @@ -107,6 +112,7 @@ BUILT_HEADERS = avconfig.h                                              \
  OBJS = adler32.o                                                        \
         aes.o                                                            \
