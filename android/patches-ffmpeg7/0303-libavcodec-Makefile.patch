@@ -1,0 +1,12 @@
+diff --git a/libavcodec/Makefile b/libavcodec/Makefile
+index a4fcce3b42..ab1225bf02 100644
+--- a/libavcodec/Makefile
++++ b/libavcodec/Makefile
+@@ -11,6 +11,7 @@ HEADERS = ac3_parser.h                                                  \
+           codec_desc.h                                                  \
+           codec_id.h                                                    \
+           codec_par.h                                                   \
++          packet_internal.h                                             \
+           d3d11va.h                                                     \
+           defs.h                                                        \
+           dirac.h                                                       \

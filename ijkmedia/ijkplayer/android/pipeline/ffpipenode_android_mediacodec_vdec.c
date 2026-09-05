@@ -506,7 +506,8 @@ static int feed_input_buffer2(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs,
                 d->next_pts_tb = d->start_pts_tb;
             }
         } while (ffp_is_flush_packet(&pkt) || d->queue->serial != d->pkt_serial);
-        av_packet_split_side_data(&pkt);
+        /* n7.1: av_packet_split_side_data() removed; side data now travels
+         * inside the packet itself. */
         av_packet_unref(&d->pkt);
         d->pkt_temp = d->pkt = pkt;
         d->packet_pending = 1;
@@ -769,7 +770,8 @@ static int feed_input_buffer(JNIEnv *env, IJKFF_Pipenode *node, int64_t timeUs, 
                 d->next_pts_tb = d->start_pts_tb;
             }
         } while (ffp_is_flush_packet(&pkt) || d->queue->serial != d->pkt_serial);
-        av_packet_split_side_data(&pkt);
+        /* n7.1: av_packet_split_side_data() removed; side data now travels
+         * inside the packet itself. */
         av_packet_unref(&d->pkt);
         d->pkt_temp = d->pkt = pkt;
         d->packet_pending = 1;

@@ -22,9 +22,9 @@
 #include "libavformat/avformat.h"
 #include "libavformat/url.h"
 #include "libavformat/avio_internal.h"
-#include "libavformat/id3v2.h"
 #include "libavformat/flv.h"
 #include "libavformat/demux.h"
+#include "libavformat/internal.h"
 
 #include "ijksdl/ijksdl_thread.h"
 #include "ijksdl/ijksdl_mutex.h"
@@ -1758,7 +1758,7 @@ static int las_close(AVFormatContext* s) {
     return 0;
 }
 
-static int las_probe(AVProbeData* p) {
+static int las_probe(const AVProbeData* p) {
     if (p->filename && av_strstart(p->filename, "ijklas:", NULL))
         return AVPROBE_SCORE_MAX;
 
@@ -2068,7 +2068,7 @@ FFInputFormat ijkff_ijklas_demuxer = {
     .p.name           = "ijklas",
     .p.long_name      = "Live Adaptive Streaming",
     .p.priv_class     = &ijklas_class,
-    .p.priv_data_size = sizeof(LasContext),
+    .priv_data_size   = sizeof(LasContext),
     .read_probe     = las_probe,
     .read_header    = las_read_header,
     .read_packet    = las_read_packet,

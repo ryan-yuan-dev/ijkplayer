@@ -14,10 +14,11 @@
 - **ijkmedia C 层**：迁移到 FFmpeg n7.1 API（send/receive 解码、`AVChannelLayout`/`ch_layout`、const `AVCodec`）；`ijklas.c`/`ijklivehook.c` 因依赖 `FFInputFormat` 内部结构移出编译，改由补丁集承载。
 - **Android 编译脚本**：适配 NDK r28（clang-only），ABI 裁剪为 `arm64` + `x86_64`，链接加 16K page 对齐（`-Wl,-z,max-page-size=16384`）、`-Wl,-Bsymbolic` 与递归对象收集；openssl 升级到 3.5 LTS。
 - **Android FFmpeg 构建验证**（Windows）：openssl-3.5.8 与 `libijkffmpeg.so` 双 ABI（arm64/x86_64）编译通过（M1）。
+- **Android ndk-build 验证**（Windows）：`compile-ijk.sh` 适配 NDK r28（`ndk-build.cmd`、c++_static、android-24、junction 兜底），`libijkplayer.so`/`libijksdl.so` 双 ABI 编译通过（M2）。
 - **文档**：`AGENTS.md` 按新目标重写；新增 `docs/`（upgrade / knowledge_base / handoff / version-plan）与 `CHANGELOG.md`。
 
 #### 进行中
-- `patches-ffmpeg7` 补丁集收尾（M1）：补丁内容与源码一致、android/ios 双份同步，Android 侧构建验证通过。
+- `patches-ffmpeg7` 补丁集收尾（M1/M2）：补丁内容与源码一致、android/ios 双份同步，Android 侧构建验证通过。
 
 #### 计划
 - Android：ndk-build 适配 NDK r28（M2）；Gradle 8.x / AGP 8.x / AndroidX / Media3（M3）。

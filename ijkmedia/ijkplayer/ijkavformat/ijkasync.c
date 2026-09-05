@@ -49,7 +49,7 @@
 
 typedef struct RingBuffer
 {
-    AVFifoBuffer *fifo;
+    AVFifo *fifo;
     int           read_back_capacity;
 
     int           read_pos;
@@ -91,7 +91,7 @@ typedef struct Context {
 static int ring_init(RingBuffer *ring, int64_t capacity, int64_t read_back_capacity)
 {
     memset(ring, 0, sizeof(RingBuffer));
-    ring->fifo = av_fifo_alloc((unsigned int)(capacity + read_back_capacity));
+    ring->fifo = av_fifo_alloc2((size_t)(capacity + read_back_capacity), 1, 0);
     if (!ring->fifo)
         return AVERROR(ENOMEM);
 
@@ -101,45 +101,90 @@ static int ring_init(RingBuffer *ring, int64_t capacity, int64_t read_back_capac
 
 static void ring_destroy(RingBuffer *ring)
 {
-    av_fifo_freep(&ring->fifo);
+    av_fifo_freep2(&ring->fifo);
 }
 
 static void ring_reset(RingBuffer *ring)
 {
-    av_fifo_reset(ring->fifo);
+    av_fifo_reset2(ring->fifo);
     ring->read_pos = 0;
 }
 
 static int ring_size(RingBuffer *ring)
 {
-    return av_fifo_size(ring->fifo) - ring->read_pos;
+    return (int)av_fifo_can_read(ring->fifo) - ring->read_pos;
 }
 
 static int ring_space(RingBuffer *ring)
 {
-    return av_fifo_space(ring->fifo);
+    return (int)av_fifo_can_write(ring->fifo);
 }
 
 static int ring_generic_read(RingBuffer *ring, void *dest, int buf_size, void (*func)(void*, void*, int))
 {
-    int ret;
+    int copied = 0;
 
     av_assert2(buf_size <= ring_size(ring));
-    ret = av_fifo_generic_peek_at(ring->fifo, dest, ring->read_pos, buf_size, func);
-    ring->read_pos += buf_size;
 
-    if (ring->read_pos > ring->read_back_capacity) {
-        av_fifo_drain(ring->fifo, ring->read_pos - ring->read_back_capacity);
-        ring->read_pos = ring->read_back_capacity;
+    /* n7.1: av_fifo_generic_peek_at()/av_fifo_drain() were reworked into
+     * av_fifo_peek_at()/av_fifo_drain2() without a transfer callback;
+     * chunk through a small staging buffer here. */
+    while (copied < buf_size) {
+        uint8_t tmp[4096];
+        int len = FFMIN(buf_size - copied, (int)sizeof(tmp));
+        int ret = av_fifo_peek(ring->fifo, tmp, len, ring->read_pos);
+        if (ret < 0)
+            return ret;
+
+        if (func)
+            func(dest, tmp, len);
+        else
+            memcpy((uint8_t *)dest + copied, tmp, len);
+
+        ring->read_pos += len;
+        copied += len;
+
+        if (ring->read_pos > ring->read_back_capacity) {
+            av_fifo_drain2(ring->fifo, ring->read_pos - ring->read_back_capacity);
+            ring->read_pos = ring->read_back_capacity;
+        }
     }
 
-    return ret;
+    return copied;
 }
 
 static int ring_generic_write(RingBuffer *ring, void *src, int size, int (*func)(void*, void*, int))
 {
+    int written = 0;
+
     av_assert2(size <= ring_space(ring));
-    return av_fifo_generic_write(ring->fifo, src, size, func);
+
+    /* n7.1: av_fifo_generic_write() lost its transfer callback; pull data
+     * through func() and push with av_fifo_write(). */
+    while (size > 0) {
+        uint8_t tmp[4096];
+        int len = FFMIN(size, (int)sizeof(tmp));
+        int ret;
+
+        if (func) {
+            len = func(src, tmp, len);
+            if (len <= 0)
+                return written ? written : len;
+        } else {
+            memcpy(tmp, src, len);
+        }
+
+        ret = av_fifo_write(ring->fifo, tmp, len);
+        if (ret < 0)
+            return ret;
+
+        if (!func)
+            src = (uint8_t *)src + len;
+        written += len;
+        size    -= len;
+    }
+
+    return written;
 }
 
 static int ring_size_of_read_back(RingBuffer *ring)

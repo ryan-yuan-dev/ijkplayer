@@ -50,6 +50,7 @@
 #include "libavutil/avassert.h"
 #include "libavutil/time.h"
 #include "libavformat/avformat.h"
+#include "libavformat/demux.h"
 #if CONFIG_AVDEVICE
 #include "libavdevice/avdevice.h"
 #endif
@@ -80,14 +81,6 @@
 #include "ijksoundtouch/ijksoundtouch_wrap.h"
 #endif
 
-// FIXME: 9 work around NDKr8e or gcc4.7 bug
-// isnan() may not recognize some double NAN, so we test both double and float
-#if defined(__ANDROID__)
-#ifdef isnan
-#undef isnan
-#endif
-#define isnan(x) (isnan((double)(x)) || isnanf((float)(x)))
-#endif
 
 #if defined(__ANDROID__)
 #define printf(...) ALOGD(__VA_ARGS__)
@@ -960,7 +953,9 @@ static void stream_component_close(FFPlayer *ffp, int stream_index)
         is->audio_buf = NULL;
         /* n7.1: AudioParams owns AVChannelLayout; release on close. */
         av_channel_layout_uninit(&is->audio_src.ch_layout);
+#if CONFIG_AVFILTER
         av_channel_layout_uninit(&is->audio_filter_src.ch_layout);
+#endif
         av_channel_layout_uninit(&is->audio_tgt.ch_layout);
 
 #ifdef FFP_MERGE
@@ -1455,16 +1450,14 @@ display:
             else if (is->audio_st)
                 av_diff = get_master_clock(is) - get_clock(&is->audclk);
             av_log(NULL, AV_LOG_INFO,
-                   "%7.2f %s:%7.3f fd=%4d aq=%5dKB vq=%5dKB sq=%5dB f=%"PRId64"/%"PRId64"   \r",
+                   "%7.2f %s:%7.3f fd=%4d aq=%5dKB vq=%5dKB sq=%5dB   \r",
                    get_master_clock(is),
                    (is->audio_st && is->video_st) ? "A-V" : (is->video_st ? "M-V" : (is->audio_st ? "M-A" : "   ")),
                    av_diff,
                    is->frame_drops_early + is->frame_drops_late,
                    aqsize / 1024,
                    vqsize / 1024,
-                   sqsize,
-                   is->video_st ? is->viddec.avctx->pts_correction_num_faulty_dts : 0,
-                   is->video_st ? is->viddec.avctx->pts_correction_num_faulty_pts : 0);
+                   sqsize);
             fflush(stdout);
             last_time = cur_time;
         }
@@ -2982,7 +2975,7 @@ static int stream_component_open(FFPlayer *ffp, int stream_index)
         is->audio_st = ic->streams[stream_index];
 
         decoder_init(&is->auddec, avctx, &is->audioq, is->continue_read_thread);
-        if ((is->ic->iformat->flags & (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) && !is->ic->iformat->read_seek) {
+        if ((is->ic->iformat->flags & (AVFMT_NOBINSEARCH | AVFMT_NOGENSEARCH | AVFMT_NO_BYTE_SEEK)) && !ffifmt(is->ic->iformat)->read_seek) {
             is->auddec.start_pts = is->audio_st->start_time;
             is->auddec.start_pts_tb = is->audio_st->time_base;
         }
@@ -3098,8 +3091,8 @@ static int is_realtime(AVFormatContext *s)
     )
         return 1;
 
-    if(s->pb && (   !strncmp(s->filename, "rtp:", 4)
-                 || !strncmp(s->filename, "udp:", 4)
+    if(s->pb && (   !strncmp(s->url, "rtp:", 4)
+                 || !strncmp(s->url, "udp:", 4)
                 )
     )
         return 1;
@@ -3429,7 +3422,7 @@ static int read_thread(void *arg)
             ret = avformat_seek_file(is->ic, -1, seek_min, seek_target, seek_max, is->seek_flags);
             if (ret < 0) {
                 av_log(NULL, AV_LOG_ERROR,
-                       "%s: error while seeking\n", is->ic->filename);
+                       "%s: error while seeking\n", is->ic->url);
             } else {
                 if (is->audio_stream >= 0) {
                     packet_queue_flush(&is->audioq);
@@ -3980,7 +3973,7 @@ static void *ffp_context_child_next(void *obj, void *prev)
     return NULL;
 }
 
-static const AVClass *ffp_context_child_class_next(const AVClass *prev)
+static const AVClass *ffp_context_child_class_iterate(void **iter)
 {
     return NULL;
 }
@@ -3991,7 +3984,7 @@ const AVClass ffp_context_class = {
     .option           = ffp_context_options,
     .version          = LIBAVUTIL_VERSION_INT,
     .child_next       = ffp_context_child_next,
-    .child_class_next = ffp_context_child_class_next,
+    .child_class_iterate = ffp_context_child_class_iterate,
 };
 
 static const char *ijk_version_info()

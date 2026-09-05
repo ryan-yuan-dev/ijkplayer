@@ -73,7 +73,7 @@ fail:
     return ret;
 }
 
-static int ijklivehook_probe(AVProbeData *probe)
+static int ijklivehook_probe(const AVProbeData *probe)
 {
     if (av_strstart(probe->filename, "ijklivehook:", NULL))
         return AVPROBE_SCORE_MAX;
@@ -190,7 +190,7 @@ static int ijklivehook_read_header(AVFormatContext *avf, AVDictionary **options)
     int         ret         = -1;
 
     c->app_ctx = (AVApplicationContext *)av_dict_strtoptr(c->app_ctx_intptr);
-    av_strstart(avf->filename, "ijklivehook:", &inner_url);
+    av_strstart(avf->url, "ijklivehook:", &inner_url);
 
     c->io_control.size = sizeof(c->io_control);
     strlcpy(c->io_control.url, inner_url, sizeof(c->io_control.url));
@@ -310,7 +310,7 @@ FFInputFormat ijkff_ijklivehook_demuxer = {
     .p.name           = "ijklivehook",
     .p.long_name      = "Live Hook Controller",
     .p.flags          = AVFMT_NOFILE | AVFMT_TS_DISCONT,
-    .p.priv_data_size = sizeof(Context),
+    .priv_data_size   = sizeof(Context),
     .read_probe     = ijklivehook_probe,
     .read_header2   = ijklivehook_read_header,
     .read_packet    = ijklivehook_read_packet,
