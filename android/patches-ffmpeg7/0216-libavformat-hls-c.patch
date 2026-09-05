@@ -1,5 +1,5 @@
 diff --git a/libavformat/hls.c b/libavformat/hls.c
-index 62473a15dd..87baa00cd2 100644
+index 62473a15dd..bc1d32cc9a 100644
 --- a/libavformat/hls.c
 +++ b/libavformat/hls.c
 @@ -2,6 +2,7 @@
@@ -201,7 +201,7 @@ index 62473a15dd..87baa00cd2 100644
 +                    if (!avio_feof(&pls->pb.pub) && ret != AVERROR_EOF) {
                          return ret;
 +                    }
-+                    reset_packet(&pls->pkt);
++                    av_packet_unref(pls->pkt);
                      break;
                  } else {
                      /* stream_index check prevents matching picture attachments etc. */

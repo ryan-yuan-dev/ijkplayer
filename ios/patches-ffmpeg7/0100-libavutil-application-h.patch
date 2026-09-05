@@ -1,9 +1,9 @@
 diff --git a/libavutil/application.h b/libavutil/application.h
 new file mode 100644
-index 0000000000..72fe902789
+index 0000000000..3cc681bf8f
 --- /dev/null
 +++ b/libavutil/application.h
-@@ -0,0 +1,121 @@
+@@ -0,0 +1,122 @@
 +/*
 + * copyright (c) 2016 Zhang Rui
 + *
@@ -26,6 +26,7 @@ index 0000000000..72fe902789
 +
 +#ifndef AVUTIL_APPLICATION_H
 +#define AVUTIL_APPLICATION_H
++#include <stdint.h>
 +
 +#include "libavutil/log.h"
 +

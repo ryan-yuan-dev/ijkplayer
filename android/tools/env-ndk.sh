@@ -38,5 +38,9 @@ ijk_derive_ndk() {
 }
 
 ANDROID_NDK=$(ijk_derive_ndk) || exit 1
+
+# Normalize to a POSIX-style path (OpenSSL's android target matches the NDK
+# path as a regex against `which` output; native Windows backslashes break it).
+command -v cygpath >/dev/null 2>&1 && ANDROID_NDK=$(cygpath -u "$ANDROID_NDK")
 export ANDROID_NDK
 echo "ANDROID_NDK=$ANDROID_NDK"

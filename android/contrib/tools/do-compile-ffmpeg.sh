@@ -184,6 +184,21 @@ fi
 FF_CFG_FLAGS="$FF_CFG_FLAGS $COMMON_FF_CFG_FLAGS"
 
 #--------------------
+# Host compiler for native build-time tools. On Windows there is no gcc;
+# prefer a space-free wrapper path to the clang shipped with Visual Studio
+# (it locates the MSVC/SDK headers automatically).
+FF_HOSTCC=""
+if command -v gcc > /dev/null 2>&1; then
+    FF_HOSTCC=gcc
+elif [ -f "$HOME/bin/host-clang.exe" ]; then
+    FF_HOSTCC=$HOME/bin/host-clang.exe
+elif command -v clang > /dev/null 2>&1; then
+    FF_HOSTCC=$(command -v clang | tr -d ' ')
+fi
+if [ -n "$FF_HOSTCC" ]; then
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --host-cc=$FF_HOSTCC"
+fi
+
 # Standard options:
 FF_CFG_FLAGS="$FF_CFG_FLAGS --prefix=$FF_PREFIX"
 

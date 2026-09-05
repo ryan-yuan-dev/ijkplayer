@@ -1,6 +1,6 @@
 diff --git a/libavformat/ijkutils.c b/libavformat/ijkutils.c
 new file mode 100644
-index 0000000000..6cc2875fc2
+index 0000000000..c932579454
 --- /dev/null
 +++ b/libavformat/ijkutils.c
 @@ -0,0 +1,99 @@
@@ -97,7 +97,7 @@ index 0000000000..6cc2875fc2
 + \
 +FFInputFormat ff_##x##_demuxer = { \
 +    .p.name             = #x, \
-+    .p.priv_data_size   = 1, \
++    .priv_data_size   = 1, \
 +    .p.priv_class       = &ijk_##x##_demuxer_class, \
 +};
 +

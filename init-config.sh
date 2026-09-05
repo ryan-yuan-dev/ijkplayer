@@ -16,6 +16,8 @@
 # limitations under the License.
 #
 
-if [ ! -f 'config/module.sh' ]; then
+# A symlink that MSYS could not create leaves a text file containing the
+# target name; regenerate module.sh from the default profile in that case.
+if [ ! -f 'config/module.sh' ] || ! grep -q 'COMMON_FF_CFG_FLAGS' config/module.sh 2>/dev/null; then
     cp config/module-lite.sh config/module.sh
 fi
