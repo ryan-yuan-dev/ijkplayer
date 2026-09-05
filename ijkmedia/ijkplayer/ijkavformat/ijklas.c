@@ -24,6 +24,7 @@
 #include "libavformat/avio_internal.h"
 #include "libavformat/id3v2.h"
 #include "libavformat/flv.h"
+#include "libavformat/demux.h"
 
 #include "ijksdl/ijksdl_thread.h"
 #include "ijksdl/ijksdl_mutex.h"
@@ -2061,18 +2062,20 @@ static const AVClass ijklas_class = {
     .version    = LIBAVUTIL_VERSION_INT,
 };
 
-AVInputFormat ijkff_ijklas_demuxer = {
-    .name           = "ijklas",
-    .long_name      = "Live Adaptive Streaming",
-    .priv_class     = &ijklas_class,
-    .priv_data_size = sizeof(LasContext),
+/* n7.1: demuxer callbacks live on FFInputFormat (libavformat/demux.h);
+ * the public fields moved into the embedded .p (AVInputFormat). */
+FFInputFormat ijkff_ijklas_demuxer = {
+    .p.name           = "ijklas",
+    .p.long_name      = "Live Adaptive Streaming",
+    .p.priv_class     = &ijklas_class,
+    .p.priv_data_size = sizeof(LasContext),
     .read_probe     = las_probe,
     .read_header    = las_read_header,
     .read_packet    = las_read_packet,
     .read_close     = las_close,
     .read_seek      = las_read_seek,
-    .extensions     = "las",
-    .flags          = AVFMT_NOFILE
+    .p.extensions     = "las",
+    .p.flags          = AVFMT_NOFILE
 };
 
 

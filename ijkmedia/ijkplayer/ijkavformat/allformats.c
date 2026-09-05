@@ -24,10 +24,26 @@
 #include "libavformat/avformat.h"
 #include "libavformat/url.h"
 #include "libavformat/version.h"
+#include "libavformat/demux.h"
 
 /* n7.1: ijk custom protocols/demuxers register in FFmpeg tree via
- * android/patches-ffmpeg7/ (R1). This translation unit keeps
- * ijkav_register_all() as a no-op marker so call sites stay unchanged. */
+ * android/patches-ffmpeg7/ (R1): libavformat/ijkutils.c provides dummy
+ * FFInputFormat/URLProtocol slots that we overwrite at startup below. */
+
+/* ijk demuxer implementations (compiled into libijkplayer) overwrite the
+ * dummy slots inside libijkffmpeg at startup. */
+extern FFInputFormat ijkff_ijklas_demuxer;
+extern FFInputFormat ijkff_ijklivehook_demuxer;
+extern int ijkav_register_ijklas_demuxer(FFInputFormat *demuxer, int demuxer_size);
+extern int ijkav_register_ijklivehook_demuxer(FFInputFormat *demuxer, int demuxer_size);
+
+void ijkav_register_ijk_demuxers(void)
+{
+    if (ijkav_register_ijklas_demuxer(&ijkff_ijklas_demuxer, sizeof(FFInputFormat)) < 0)
+        av_log(NULL, AV_LOG_ERROR, "register ijklas demuxer failed\n");
+    if (ijkav_register_ijklivehook_demuxer(&ijkff_ijklivehook_demuxer, sizeof(FFInputFormat)) < 0)
+        av_log(NULL, AV_LOG_ERROR, "register ijklivehook demuxer failed\n");
+}
 
 void ijkav_register_all(void)
 {
@@ -39,4 +55,7 @@ void ijkav_register_all(void)
 
     /* n7.1: av_register_all() removed (static registration). No-op. */
     av_log(NULL, AV_LOG_INFO, "ijkav_register_all: custom modules register via patches-ffmpeg7 (R1)\n");
+
+    ijkav_register_ijk_demuxers();
 }
+
