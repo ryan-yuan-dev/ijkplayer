@@ -23,6 +23,9 @@ ijk_derive_ndk() {
     IJK_NDK_CANDIDATE=""
     if [ -d "$ANDROID_HOME/ndk" ]; then
         IJK_NDK_CANDIDATE=$(ls -d "$ANDROID_HOME"/ndk/28.* 2>/dev/null | sort -V | tail -n 1)
+        if [ -z "$IJK_NDK_CANDIDATE" ]; then
+            IJK_NDK_CANDIDATE=$(ls -d "$ANDROID_HOME"/ndk/29.* 2>/dev/null | sort -V | tail -n 1)
+        fi
     fi
 
     if [ -z "$IJK_NDK_CANDIDATE" ] || [ ! -d "$IJK_NDK_CANDIDATE" ]; then

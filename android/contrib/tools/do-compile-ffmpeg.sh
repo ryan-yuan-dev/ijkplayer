@@ -80,7 +80,7 @@ if [ "$FF_ARCH" = "x86_64" ]; then
     FF_CROSS_PREFIX=x86_64-linux-android
     FF_LLVM_TRIPLE=x86_64-linux-android${FF_ANDROID_API}
 
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=x86_64 --enable-yasm"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=x86_64"
 
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS"
     FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS"
@@ -96,7 +96,7 @@ elif [ "$FF_ARCH" = "arm64" ]; then
     FF_CROSS_PREFIX=aarch64-linux-android
     FF_LLVM_TRIPLE=aarch64-linux-android${FF_ANDROID_API}
 
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=aarch64 --enable-yasm"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --arch=aarch64"
 
     FF_EXTRA_CFLAGS="$FF_EXTRA_CFLAGS"
     FF_EXTRA_LDFLAGS="$FF_EXTRA_LDFLAGS"
@@ -123,6 +123,9 @@ FF_HOST_TAG=linux-x86_64
 case "$UNAME_S" in
     Darwin)
         FF_HOST_TAG=darwin-x86_64
+    ;;
+    MINGW*|MSYS*|CYGWIN*)
+        FF_HOST_TAG=windows-x86_64
     ;;
 esac
 FF_LLVM_PREBUILT=$ANDROID_NDK/toolchains/llvm/prebuilt/$FF_HOST_TAG
@@ -197,13 +200,14 @@ FF_CFG_FLAGS="$FF_CFG_FLAGS --strip=$STRIP"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --sysroot=$FF_SYSROOT"
 # FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-symver"
 
-if [ "$FF_ARCH" = "x86" ]; then
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-asm"
-else
-    # Optimization options (experts only):
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-asm"
-    FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-inline-asm"
+if [ "$FF_ARCH" = "x86_64" ] && ! command -v nasm > /dev/null 2>&1; then
+    echo "WARNING: nasm not found, building x86_64 without standalone x86 assembly"
+    FF_CFG_FLAGS="$FF_CFG_FLAGS --disable-x86asm"
 fi
+
+# Optimization options (experts only):
+FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-asm"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --enable-inline-asm"
 
 case "$FF_BUILD_OPT" in
     debug)

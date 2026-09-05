@@ -16,184 +16,96 @@
 # limitations under the License.
 #
 
+# Modernized for OpenSSL 3.5 LTS + NDK r28 (clang-only, arm64/x86_64 only).
+
 #--------------------
 set -e
 
-if [ -z "$ANDROID_NDK" ]; then
-    echo "You must define ANDROID_NDK before starting."
-    echo "They must point to your NDK directories.\n"
-    exit 1
-fi
-
-#--------------------
-# common defines
 FF_ARCH=$1
 if [ -z "$FF_ARCH" ]; then
-    echo "You must specific an architecture 'arm, armv7a, x86, ...'.\n"
+    echo "You must specific an architecture 'arm64, x86_64'.\n"
     exit 1
 fi
 
-
 FF_BUILD_ROOT=`pwd`
-FF_ANDROID_PLATFORM=android-9
-
+FF_ANDROID_API=24
 
 FF_BUILD_NAME=
 FF_SOURCE=
-FF_CROSS_PREFIX=
-
 FF_CFG_FLAGS=
-FF_PLATFORM_CFG_FLAGS=
-
-FF_EXTRA_CFLAGS=
-FF_EXTRA_LDFLAGS=
-
-
 
 #--------------------
 echo ""
 echo "--------------------"
-echo "[*] make NDK standalone toolchain"
+echo "[*] check NDK env"
 echo "--------------------"
 . ./tools/do-detect-env.sh
-FF_MAKE_TOOLCHAIN_FLAGS=$IJK_MAKE_TOOLCHAIN_FLAGS
 FF_MAKE_FLAGS=$IJK_MAKE_FLAG
-FF_GCC_VER=$IJK_GCC_VER
-FF_GCC_64_VER=$IJK_GCC_64_VER
 
-
-#----- armv7a begin -----
-if [ "$FF_ARCH" = "armv7a" ]; then
-    FF_BUILD_NAME=openssl-armv7a
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-	
-    FF_CROSS_PREFIX=arm-linux-androideabi
-	FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
-
-    FF_PLATFORM_CFG_FLAGS="android-armv7"
-
-elif [ "$FF_ARCH" = "armv5" ]; then
-    FF_BUILD_NAME=openssl-armv5
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-	
-    FF_CROSS_PREFIX=arm-linux-androideabi
-	FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_VER}
-
-    FF_PLATFORM_CFG_FLAGS="android"
-
-elif [ "$FF_ARCH" = "x86" ]; then
-    FF_BUILD_NAME=openssl-x86
-    FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-	
-    FF_CROSS_PREFIX=i686-linux-android
-	FF_TOOLCHAIN_NAME=x86-${FF_GCC_VER}
-
-    FF_PLATFORM_CFG_FLAGS="android-x86"
-
-    FF_CFG_FLAGS="$FF_CFG_FLAGS no-asm"
-
-elif [ "$FF_ARCH" = "x86_64" ]; then
-    FF_ANDROID_PLATFORM=android-21
-
+#----- arch begin -----
+if [ "$FF_ARCH" = "x86_64" ]; then
     FF_BUILD_NAME=openssl-x86_64
     FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
-    FF_CROSS_PREFIX=x86_64-linux-android
-    FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
-
-    FF_PLATFORM_CFG_FLAGS="linux-x86_64"
-
+    FF_TARGET_ARCH=android-x86_64
 elif [ "$FF_ARCH" = "arm64" ]; then
-    FF_ANDROID_PLATFORM=android-21
-
     FF_BUILD_NAME=openssl-arm64
     FF_SOURCE=$FF_BUILD_ROOT/$FF_BUILD_NAME
-
-    FF_CROSS_PREFIX=aarch64-linux-android
-    FF_TOOLCHAIN_NAME=${FF_CROSS_PREFIX}-${FF_GCC_64_VER}
-
-    FF_PLATFORM_CFG_FLAGS="linux-aarch64"
-
+    FF_TARGET_ARCH=android-arm64
 else
-    echo "unknown architecture $FF_ARCH";
+    echo "unknown architecture $FF_ARCH (only arm64/x86_64 supported)";
     exit 1
 fi
 
-FF_TOOLCHAIN_PATH=$FF_BUILD_ROOT/build/$FF_BUILD_NAME/toolchain
-
-FF_SYSROOT=$FF_TOOLCHAIN_PATH/sysroot
 FF_PREFIX=$FF_BUILD_ROOT/build/$FF_BUILD_NAME/output
-
 mkdir -p $FF_PREFIX
-# mkdir -p $FF_SYSROOT
-
-
-#--------------------
-echo ""
-echo "--------------------"
-echo "[*] make NDK standalone toolchain"
-echo "--------------------"
-. ./tools/do-detect-env.sh
-FF_MAKE_TOOLCHAIN_FLAGS=$IJK_MAKE_TOOLCHAIN_FLAGS
-FF_MAKE_FLAGS=$IJK_MAKE_FLAG
-
-
-FF_MAKE_TOOLCHAIN_FLAGS="$FF_MAKE_TOOLCHAIN_FLAGS --install-dir=$FF_TOOLCHAIN_PATH"
-FF_TOOLCHAIN_TOUCH="$FF_TOOLCHAIN_PATH/touch"
-if [ ! -f "$FF_TOOLCHAIN_TOUCH" ]; then
-    $ANDROID_NDK/build/tools/make-standalone-toolchain.sh \
-        $FF_MAKE_TOOLCHAIN_FLAGS \
-        --platform=$FF_ANDROID_PLATFORM \
-        --toolchain=$FF_TOOLCHAIN_NAME
-    touch $FF_TOOLCHAIN_TOUCH;
-fi
-
 
 #--------------------
 echo ""
 echo "--------------------"
 echo "[*] check openssl env"
 echo "--------------------"
-export PATH=$FF_TOOLCHAIN_PATH/bin:$PATH
+UNAME_S=$(uname -s)
+FF_HOST_TAG=linux-x86_64
+case "$UNAME_S" in
+    Darwin)
+        FF_HOST_TAG=darwin-x86_64
+    ;;
+    MINGW*|MSYS*|CYGWIN*)
+        FF_HOST_TAG=windows-x86_64
+    ;;
+esac
+FF_LLVM_PREBUILT=$ANDROID_NDK/toolchains/llvm/prebuilt/$FF_HOST_TAG
+FF_LLVM_BIN=$FF_LLVM_PREBUILT/bin
 
-export COMMON_FF_CFG_FLAGS=
+export PATH=$FF_LLVM_BIN:$PATH
+# OpenSSL 3.x android targets locate the NDK through ANDROID_NDK_ROOT.
+export ANDROID_NDK_ROOT=$ANDROID_NDK
 
-FF_CFG_FLAGS="$FF_CFG_FLAGS $COMMON_FF_CFG_FLAGS"
-
-#--------------------
-# Standard options:
-FF_CFG_FLAGS="$FF_CFG_FLAGS zlib-dynamic"
 FF_CFG_FLAGS="$FF_CFG_FLAGS no-shared"
+FF_CFG_FLAGS="$FF_CFG_FLAGS no-tests"
+FF_CFG_FLAGS="$FF_CFG_FLAGS zlib-dynamic"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --prefix=$FF_PREFIX"
+FF_CFG_FLAGS="$FF_CFG_FLAGS --libdir=lib"
 FF_CFG_FLAGS="$FF_CFG_FLAGS --openssldir=$FF_PREFIX"
-FF_CFG_FLAGS="$FF_CFG_FLAGS --cross-compile-prefix=${FF_CROSS_PREFIX}-"
-FF_CFG_FLAGS="$FF_CFG_FLAGS $FF_PLATFORM_CFG_FLAGS"
+FF_CFG_FLAGS="$FF_CFG_FLAGS -D__ANDROID_API__=$FF_ANDROID_API"
 
 #--------------------
 echo ""
 echo "--------------------"
-echo "[*] configurate openssl"
+echo "[*] configurate openssl ($FF_TARGET_ARCH)"
 echo "--------------------"
 cd $FF_SOURCE
-#if [ -f "./Makefile" ]; then
-#    echo 'reuse configure'
-#else
-    echo "./Configure $FF_CFG_FLAGS"
-    ./Configure $FF_CFG_FLAGS
-#        --extra-cflags="$FF_CFLAGS $FF_EXTRA_CFLAGS" \
-#        --extra-ldflags="$FF_EXTRA_LDFLAGS"
-#fi
+if [ -f "./Makefile" ] && [ -f "./configdata.pm" ]; then
+    echo 'reuse configure'
+else
+    echo "./Configure $FF_TARGET_ARCH $FF_CFG_FLAGS"
+    ./Configure $FF_TARGET_ARCH $FF_CFG_FLAGS
+fi
 
 #--------------------
 echo ""
 echo "--------------------"
 echo "[*] compile openssl"
 echo "--------------------"
-make depend
 make $FF_MAKE_FLAGS
 make install_sw
-
-#--------------------
-echo ""
-echo "--------------------"
-echo "[*] link openssl"
-echo "--------------------"

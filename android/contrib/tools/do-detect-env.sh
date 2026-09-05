@@ -42,11 +42,11 @@ fi
 export IJK_NDK_REL=$(grep -o '^Pkg\.Revision.*=[0-9]*.*' $ANDROID_NDK/source.properties 2>/dev/null | sed 's/[[:space:]]*//g' | cut -d "=" -f 2)
 echo "IJK_NDK_REL=$IJK_NDK_REL"
 case "$IJK_NDK_REL" in
-    28*)
+    28*|29*)
         echo "NDKr$IJK_NDK_REL detected"
     ;;
     *)
-        echo "You need NDK r28 (28.*). Set ANDROID_NDK to an r28 install."
+        echo "You need NDK r28+ (28.*|29.*). Set ANDROID_NDK to an r28/r29 install."
         exit 1
     ;;
 esac
@@ -56,5 +56,11 @@ export IJK_MAKE_FLAG=
 case "$UNAME_S" in
     Darwin)
         export IJK_MAKE_FLAG=-j`sysctl -n machdep.cpu.thread_count`
+    ;;
+    Linux)
+        export IJK_MAKE_FLAG=-j`nproc`
+    ;;
+    MINGW*|MSYS*|CYGWIN*)
+        export IJK_MAKE_FLAG=-j${NUMBER_OF_PROCESSORS:-4}
     ;;
 esac

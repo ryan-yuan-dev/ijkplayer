@@ -19,11 +19,9 @@
 #----------
 # modify for your build tool
 
-FF_ALL_ARCHS_IOS6_SDK="armv7 armv7s i386"
-FF_ALL_ARCHS_IOS7_SDK="armv7 armv7s arm64 i386 x86_64"
-FF_ALL_ARCHS_IOS8_SDK="armv7 arm64 i386 x86_64"
+FF_ALL_ARCHS_IOS13_SDK="arm64 arm64-sim x86_64-sim"
 
-FF_ALL_ARCHS=$FF_ALL_ARCHS_IOS8_SDK
+FF_ALL_ARCHS=$FF_ALL_ARCHS_IOS13_SDK
 
 #----------
 UNI_BUILD_ROOT=`pwd`
@@ -63,14 +61,11 @@ do_lipo_all () {
         do_lipo "$FF_LIB.a";
     done
 
-    cp -R $UNI_BUILD_ROOT/build/openssl-armv7/output/include $UNI_BUILD_ROOT/build/universal/
+    cp -R $UNI_BUILD_ROOT/build/openssl-arm64/output/include $UNI_BUILD_ROOT/build/universal/
 }
 
 #----------
-if [ "$FF_TARGET" = "armv7" -o "$FF_TARGET" = "armv7s" -o "$FF_TARGET" = "arm64" ]; then
-    echo_archs
-    sh tools/do-compile-openssl.sh $FF_TARGET
-elif [ "$FF_TARGET" = "i386" -o "$FF_TARGET" = "x86_64" ]; then
+if [ "$FF_TARGET" = "arm64" -o "$FF_TARGET" = "arm64-sim" -o "$FF_TARGET" = "x86_64-sim" ]; then
     echo_archs
     sh tools/do-compile-openssl.sh $FF_TARGET
 elif [ "$FF_TARGET" = "lipo" ]; then
@@ -94,8 +89,7 @@ elif [ "$FF_TARGET" = "clean" ]; then
     done
 else
     echo "Usage:"
-    echo "  compile-openssl.sh armv7|arm64|i386|x86_64"
-    echo "  compile-openssl.sh armv7s (obselete)"
+    echo "  compile-openssl.sh arm64|arm64-sim|x86_64-sim"
     echo "  compile-openssl.sh lipo"
     echo "  compile-openssl.sh all"
     echo "  compile-openssl.sh clean"
