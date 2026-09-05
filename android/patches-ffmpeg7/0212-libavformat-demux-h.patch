@@ -1,0 +1,16 @@
+diff --git a/libavformat/demux.h b/libavformat/demux.h
+index 9c76095662..3c981c61bc 100644
+--- a/libavformat/demux.h
++++ b/libavformat/demux.h
+@@ -62,6 +62,11 @@ typedef struct FFInputFormat {
+      */
+     int (*read_probe)(const AVProbeData *);
+ 
++    /**
++     * Used by format which open further nested input.
++     */
++    int (*read_header2)(struct AVFormatContext *, AVDictionary **options);
++
+     /**
+      * Read the format header and initialize the AVFormatContext
+      * structure. Return 0 if OK. 'avformat_new_stream' should be

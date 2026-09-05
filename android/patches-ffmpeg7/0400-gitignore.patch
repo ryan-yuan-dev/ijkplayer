@@ -1,0 +1,9 @@
+diff --git a/.gitignore b/.gitignore
+index e810d11107..18b96d051a 100644
+--- a/.gitignore
++++ b/.gitignore
+@@ -1,3 +1,4 @@
++.DS_Store
+ *.a
+ *.o
+ *.o.*

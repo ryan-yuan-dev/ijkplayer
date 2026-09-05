@@ -1,0 +1,12 @@
+diff --git a/libavcodec/packet.h b/libavcodec/packet.h
+index 0a28010542..553b44baa4 100644
+--- a/libavcodec/packet.h
++++ b/libavcodec/packet.h
+@@ -611,6 +611,7 @@ typedef struct AVPacketList {
+  * be discarded by the decoder.  I.e. Non-reference frames.
+  */
+ #define AV_PKT_FLAG_DISPOSABLE 0x0010
++#define AV_PKT_FLAG_NEW_SEG 0x8000 ///< The packet is the first packet from a source in concat
+ 
+ enum AVSideDataParamChangeFlags {
+     AV_SIDE_DATA_PARAM_CHANGE_SAMPLE_RATE    = 0x0004,

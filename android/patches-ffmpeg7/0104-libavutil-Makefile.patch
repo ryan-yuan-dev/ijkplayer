@@ -1,0 +1,46 @@
+diff --git a/libavutil/Makefile b/libavutil/Makefile
+index 6e6fa8d800..db28e9b3be 100644
+--- a/libavutil/Makefile
++++ b/libavutil/Makefile
+@@ -4,6 +4,7 @@ DESC = FFmpeg utility library
+ HEADERS = adler32.h                                                     \
+           aes.h                                                         \
+           aes_ctr.h                                                     \
++          application.h                                                 \
+           ambient_viewing_environment.h                                 \
+           attributes.h                                                  \
+           audio_fifo.h                                                  \
+@@ -29,6 +30,7 @@ HEADERS = adler32.h                                                     \
+           dovi_meta.h                                                   \
+           downmix_info.h                                                \
+           encryption_info.h                                             \
++          dns_cache.h                                                   \
+           error.h                                                       \
+           eval.h                                                        \
+           executor.h                                                    \
+@@ -92,6 +94,9 @@ HEADERS = adler32.h                                                     \
+           video_enc_params.h                                            \
+           xtea.h                                                        \
+           tea.h                                                         \
++          thread.h                                                      \
++
++HEADERS-$(CONFIG_LZO)                   += lzo.h
+           tx.h                                                          \
+           film_grain_params.h                                           \
+           video_hint.h
+@@ -107,6 +112,7 @@ BUILT_HEADERS = avconfig.h                                              \
+ OBJS = adler32.o                                                        \
+        aes.o                                                            \
+        aes_ctr.o                                                        \
++       application.o                                                    \
+        ambient_viewing_environment.o                                    \
+        audio_fifo.o                                                     \
+        avstring.o                                                       \
+@@ -128,6 +134,7 @@ OBJS = adler32.o                                                        \
+        dovi_meta.o                                                      \
+        downmix_info.o                                                   \
+        encryption_info.o                                                \
++       dns_cache.o                                                      \
+        error.o                                                          \
+        eval.o                                                           \
+        executor.o                                                       \

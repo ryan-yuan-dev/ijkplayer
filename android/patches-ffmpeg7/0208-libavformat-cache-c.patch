@@ -1,0 +1,22 @@
+diff --git a/libavformat/cache.c b/libavformat/cache.c
+index 5d71e56f3d..f7be78adb4 100644
+--- a/libavformat/cache.c
++++ b/libavformat/cache.c
+@@ -208,7 +208,7 @@ static int cache_read(URLContext *h, unsigned char *buf, int size)
+     }
+ 
+     r = ffurl_read(c->inner, buf, size);
+-    if (r == AVERROR_EOF && size>0) {
++    if (r == 0 && size>0) {
+         c->is_true_eof = 1;
+         av_assert0(c->end >= c->logical_pos);
+     }
+@@ -270,7 +270,7 @@ resolve_eof:
+                 if (whence == SEEK_SET)
+                     size = FFMIN(sizeof(tmp), pos - c->logical_pos);
+                 ret = cache_read(h, tmp, size);
+-                if (ret == AVERROR_EOF && whence == SEEK_END) {
++                if (ret == 0 && whence == SEEK_END) {
+                     av_assert0(c->is_true_eof);
+                     goto resolve_eof;
+                 }

@@ -1,0 +1,28 @@
+diff --git a/libavformat/file.c b/libavformat/file.c
+index 6a66040b65..bfe45ee92d 100644
+--- a/libavformat/file.c
++++ b/libavformat/file.c
+@@ -450,11 +450,14 @@ static int pipe_open(URLContext *h, const char *filename, int flags)
+         }
+         c->fd = fd;
+     }
++#if HAVE_SETMODE
++    setmode(fd, O_BINARY);
++#endif
+ 
+     c->fd = fd_dup(h, c->fd);
+     if (c->fd == -1)
+         return AVERROR(errno);
+-    h->is_streamed = 1;
++    h->is_streamed = 0;
+     return 0;
+ }
+ 
+@@ -463,6 +466,7 @@ const URLProtocol ff_pipe_protocol = {
+     .url_open            = pipe_open,
+     .url_read            = file_read,
+     .url_write           = file_write,
++    .url_seek            = file_seek,
+     .url_close           = file_close,
+     .url_get_file_handle = file_get_handle,
+     .url_check           = file_check,

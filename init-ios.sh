@@ -16,11 +16,12 @@
 # limitations under the License.
 #
 
-# IJK_FFMPEG_UPSTREAM=git://git.videolan.org/ffmpeg.git
-IJK_FFMPEG_UPSTREAM=https://github.com/Bilibili/FFmpeg.git
-IJK_FFMPEG_FORK=https://github.com/Bilibili/FFmpeg.git
-IJK_FFMPEG_COMMIT=ff4.0--ijk0.8.8--20210426--001
+# IJK_FFMPEG_UPSTREAM=https://github.com/Bilibili/FFmpeg.git
+IJK_FFMPEG_UPSTREAM=https://github.com/FFmpeg/FFmpeg.git
+IJK_FFMPEG_FORK=https://github.com/FFmpeg/FFmpeg.git
+IJK_FFMPEG_COMMIT=n7.1
 IJK_FFMPEG_LOCAL_REPO=extra/ffmpeg
+IJK_FFMPEG_PATCH_DIR=../patches-ffmpeg7
 
 IJK_GASP_UPSTREAM=https://github.com/Bilibili/gas-preprocessor.git
 
@@ -39,10 +40,10 @@ fi
 set -e
 TOOLS=tools
 
-FF_ALL_ARCHS_IOS6_SDK="armv7 armv7s i386"
-FF_ALL_ARCHS_IOS7_SDK="armv7 armv7s arm64 i386 x86_64"
-FF_ALL_ARCHS_IOS8_SDK="armv7 arm64 i386 x86_64"
-FF_ALL_ARCHS=$FF_ALL_ARCHS_IOS8_SDK
+FF_ALL_ARCHS_IOS6_SDK="armv7 armv7s i386"      # removed: 32-bit dropped (iOS 13+ baseline)
+FF_ALL_ARCHS_IOS7_SDK="armv7 armv7s arm64 i386 x86_64"  # removed: 32-bit dropped (iOS 13+ baseline)
+FF_ALL_ARCHS_IOS13_SDK="arm64 arm64-sim x86_64-sim"
+FF_ALL_ARCHS=$FF_ALL_ARCHS_IOS13_SDK
 FF_TARGET=$1
 
 function echo_ffmpeg_version() {
@@ -63,6 +64,14 @@ function pull_fork() {
     sh $TOOLS/pull-repo-ref.sh $IJK_FFMPEG_FORK ios/ffmpeg-$1 ${IJK_FFMPEG_LOCAL_REPO}
     cd ios/ffmpeg-$1
     git checkout ${IJK_FFMPEG_COMMIT} -B ijkplayer
+    if [ -d "../patches-ffmpeg7" ]; then
+        for p in ../patches-ffmpeg7/*.patch; do
+            if [ -f "$p" ]; then
+                echo "== apply patch $p =="
+                patch -p1 < "$p"
+            fi
+        done
+    fi
     cd -
 }
 
@@ -82,7 +91,7 @@ case "$FF_TARGET" in
     ffmpeg-version)
         echo_ffmpeg_version
     ;;
-    armv7|armv7s|arm64|i386|x86_64)
+    arm64|arm64-sim|x86_64-sim)
         pull_common
         pull_fork $FF_TARGET
     ;;

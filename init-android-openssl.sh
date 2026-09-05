@@ -16,10 +16,10 @@
 # limitations under the License.
 #
 
-#IJK_OPENSSL_UPSTREAM=https://github.com/openssl/openssl
-IJK_OPENSSL_UPSTREAM=https://github.com/Bilibili/openssl.git
-IJK_OPENSSL_FORK=https://github.com/Bilibili/openssl.git
-IJK_OPENSSL_COMMIT=OpenSSL_1_0_2q
+# IJK_OPENSSL_UPSTREAM=https://github.com/Bilibili/openssl.git
+IJK_OPENSSL_UPSTREAM=https://github.com/openssl/openssl.git
+IJK_OPENSSL_FORK=https://github.com/openssl/openssl.git
+IJK_OPENSSL_COMMIT=openssl-3.5.8
 IJK_OPENSSL_LOCAL_REPO=extra/openssl
 
 set -e
@@ -37,8 +37,5 @@ function pull_fork()
     cd -
 }
 
-pull_fork "armv5"
-pull_fork "armv7a"
 pull_fork "arm64"
-pull_fork "x86"
 pull_fork "x86_64"
