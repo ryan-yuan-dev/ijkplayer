@@ -4,6 +4,11 @@ tag next
 - android: NDK r28 clang-only toolchain, arm64/x86_64 only, 16K page alignment
 - ijkmedia: port C layer to n7.1 (send/receive decode, AVChannelLayout, const AVCodec, ch_layouts)
 - ijkmedia: ijklas/ijklivehook move to patches-ffmpeg7 (FFInputFormat internalized in n7.1)
+- android: ndk-build replaced by CMake (Ninja via NDK toolchain file)
+- android: gradle modernized to AGP 8.10.1 / Gradle 8.11.1 / AndroidX / media3
+- android: ijkplayer-exo rewritten over androidx.media3 (exoplayer r1.5 wrapper retired)
+- android: example app migrated to AndroidX, arm64/x86_64 only
+
 
 tag k0.8.8-ffmpeg4.0 (upstream)
 --------------------------------
