@@ -1,10 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="tv.danmaku.ijk.media.example">
-
-    <uses-sdk
-        android:minSdkVersion="9"
-        android:targetSdkVersion="22" />
+   >
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -21,6 +17,7 @@
         android:theme="@style/AppTheme">
         <activity
             android:name="tv.danmaku.ijk.media.example.activities.FileExplorerActivity"
+            android:exported="true"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/app_name"
             android:screenOrientation="user"
@@ -53,6 +50,7 @@
             android:theme="@style/AppTheme" />
         <activity
             android:name="tv.danmaku.ijk.media.example.activities.VideoActivity"
+            android:exported="true"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="@string/app_name"
             android:screenOrientation="user"

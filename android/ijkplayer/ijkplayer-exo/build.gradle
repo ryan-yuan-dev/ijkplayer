@@ -1,17 +1,11 @@
 apply plugin: 'com.android.library'
 
 android {
-    // http://tools.android.com/tech-docs/new-build-system/tips
-    //noinspection GroovyAssignabilityCheck
+    namespace 'tv.danmaku.ijk.media.exo'
     compileSdkVersion rootProject.ext.compileSdkVersion
-    //noinspection GroovyAssignabilityCheck
-    buildToolsVersion rootProject.ext.buildToolsVersion
 
-    lintOptions {
-        abortOnError false
-    }
     defaultConfig {
-        minSdkVersion 9
+        minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
     }
     buildTypes {
@@ -20,21 +14,19 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    lint {
+        abortOnError false
+    }
 }
 
 dependencies {
-    compile fileTree(dir: 'libs', include: ['*.jar'])
+    api project(':ijkplayer-java')
+    implementation 'androidx.annotation:annotation:1.9.1'
 
-    compile 'com.google.android.exoplayer:exoplayer:r1.5.11'
-
-    compile project(':ijkplayer-java')
-    // compile 'tv.danmaku.ijk.media:ijkplayer-java:0.8.8'
-}
-
-gradle.startParameter.taskNames.each { task ->
-    def subProjectName = task;
-    if (task.startsWith(':'))
-        subProjectName = task.split(":")[1]
-    if (subProjectName.equals(project.name))
-        apply from: new File(rootProject.projectDir, "tools/gradle-on-demand.gradle");
+    // Media3 (androidx.media3) — replaces the legacy ExoPlayer r1.5 wrapper.
+    api "androidx.media3:media3-exoplayer:$rootProject.ext.media3Version"
+    implementation "androidx.media3:media3-exoplayer-hls:$rootProject.ext.media3Version"
+    implementation "androidx.media3:media3-exoplayer-dash:$rootProject.ext.media3Version"
+    implementation "androidx.media3:media3-exoplayer-smoothstreaming:$rootProject.ext.media3Version"
+    implementation "androidx.media3:media3-datasource:$rootProject.ext.media3Version"
 }
