@@ -6,6 +6,8 @@
   - `windows-build-env.md` — Windows 构建环境坑位（junction、MSYS、镜像、CRLF 等）
   - `ffmpeg-patch-workflow.md` — patches-ffmpeg7 补丁集生成与修错闭环
   - `android-build-system.md` — Android 构建体系（CMake native + Gradle）与全链路速查
+  - `sdk-user-guide.md` — SDK 接入指南（依赖引入、最小接入、选项、缓存、多后端）
+  - `media-capabilities.md` — 核心功能支持矩阵（容器/解码/协议/档位差异/播放器特性）
   - `ai-session-protocol.md` — AI 会话协作规范（检索原则、文档产出时机、禁止事项、收口流程）
 - `handoff/`：会话交接（由用户手动发起；每会话结束更新）。
 - `version-plan.md`：版本/tag 路线图。
