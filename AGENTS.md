@@ -61,7 +61,7 @@ cd ios && ./compile-ffmpeg.sh all                 # 经 lipo 产出 build/univer
 - `android/patches-ffmpeg7/`、`ios/patches-ffmpeg7/` — 打在上游 FFmpeg n7.1 上的 ijk 定制补丁集。
 - `android/ijkplayer/` — Gradle 根（`build.gradle` 定义 `versionCode`/`versionName`）；`settings.gradle` 声明模块（`ijkplayer-arm64`、`ijkplayer-x86_64`、`ijkplayer-java`、`ijkplayer-exo`、`ijkplayer-example`）。
 - `ios/IJKMediaPlayer/` — ObjC 框架（`IJKFFMoviePlayerController.m` 由 `init-ios.sh:sync_ff_version` 同步 FFmpeg 版本）。
-- `docs/` — `README.md`（索引）、`upgrade/`（阶段记录）、`knowledge_base/`（已验证结论）、`handoff/`（会话交接）、`version-plan.md`（版本/tag 路线图）。
+- `docs/` — `README.md`（索引）、`upgrade/`（阶段记录）、`knowledge_base/`（已验证结论，按需检索，索引见 docs/README.md）、`handoff/`（会话交接，用户手动发起）、`version-plan.md`（版本/tag 路线图）。
 - `tools/` — 仓库初始化辅助脚本。
 
 ## 坑位
