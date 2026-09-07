@@ -9,6 +9,7 @@
 | `v0.9.0-alpha.1` | M1 完成 | FFmpeg n7.1 基线：patches-ffmpeg7 补丁集（含 ijklas/ijklivehook 移植）、openssl 3.5、Android/iOS init 脚本切 n7.1；`compile-ffmpeg.sh` 双 ABI 构建通过 |
 | `v0.9.0-beta.1` | M2+M3 完成 | Android 全链路：ndk-build 适配 NDK r28、Gradle 8.x/AGP 8.x/AndroidX/Media3、example 可安装可播放 |
 | `v0.9.0-rc.1` | M4 完成 + `tools/verify-all.sh` 双平台通过 | iOS 全链路（iOS 13、arm64-sim、x86_64-sim）+ 本地一键验证脚本（Android 双 ABI + iOS 双 SDK），替代 M5 CI |
+| `v0.9.0-rc.2` | rc.1 修复 + Android 真机冒烟通过 | ijklas cache_ptr 选项适配 FFmpeg 7（string 形式）、example demo AndroidX/edge-to-edge 修复、Sample 长按复制/错误文案友好化；bipbop HLS 真机端到端播放验证 |
 | `v0.9.0` | 双端验证 | 冒烟测试清单通过，`version.sh` bump 到 0.9.0 并同步 README/gradle/pbxproj |
 
 ## 收口流程（每个 tag）

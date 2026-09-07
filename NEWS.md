@@ -12,6 +12,9 @@ tag next
 - ios: deployment target raised to iOS 13, FF_TARGET_SUBDIR build setting for dual SDK libs
 - ios: VideoToolBox pipeline ported to n7.1 (ff_nal_parse_units, send/receive decode)
 - tools: verify-all.sh one-shot full-chain verification (Android + iOS), replaces CI gate
+- android: device smoke test on SDK 36 arm64; edge-to-edge system bar insets for example app
+- ijkmedia: ijklas cache_ptr options switched to string form for FFmpeg 7 int64 double-range check
+- android: example sample list long-press copy, ellipsized subtitle, friendlier error text
 
 
 tag k0.8.8-ffmpeg4.0 (upstream)
