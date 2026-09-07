@@ -1,0 +1,7 @@
+{
+  "includeIgnored": [
+    "extra/patchgen/ffmpeg-bilibili-ijk/",
+    "extra/patchgen/ffmpeg-upstream-n4.0/",
+    "extra/patchgen/ffmpeg-upstream-n7.1/"
+  ]
+}
