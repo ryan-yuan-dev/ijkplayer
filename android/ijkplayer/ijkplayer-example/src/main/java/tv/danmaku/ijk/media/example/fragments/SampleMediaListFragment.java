@@ -18,6 +18,8 @@
 package tv.danmaku.ijk.media.example.fragments;
 
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
 import android.content.Context;
 import android.os.Bundle;
 import androidx.annotation.Nullable;
@@ -29,6 +31,7 @@ import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import tv.danmaku.ijk.media.example.R;
 import tv.danmaku.ijk.media.example.activities.VideoActivity;
@@ -65,6 +68,18 @@ public class SampleMediaListFragment extends Fragment {
                 String name = item.mName;
                 String url = item.mUrl;
                 VideoActivity.intentTo(activity, url, name);
+            }
+        });
+        mFileListView.setOnItemLongClickListener(new AdapterView.OnItemLongClickListener() {
+            @Override
+            public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, final long id) {
+                SampleMediaItem item = mAdapter.getItem(position);
+                String text = item.mName + "\n" + item.mUrl;
+                ClipboardManager clipboard =
+                        (ClipboardManager) activity.getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText(item.mName, text));
+                Toast.makeText(activity, R.string.sample_copied, Toast.LENGTH_SHORT).show();
+                return true;
             }
         });
 
@@ -129,7 +144,7 @@ public class SampleMediaListFragment extends Fragment {
                 "    ]\n" +
                 "}";
 
-        mAdapter.addItem(manifest_string, "las test");
+        mAdapter.addItem(manifest_string, "las test", "LAS multi-bitrate adaptive manifest");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/bipbop_4x3_variant.m3u8", "bipbop basic master playlist");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear1/prog_index.m3u8", "bipbop basic 400x300 @ 232 kbps");
         mAdapter.addItem("http://devimages.apple.com.edgekey.net/streaming/examples/bipbop_4x3/gear2/prog_index.m3u8", "bipbop basic 640x480 @ 650 kbps");
@@ -148,10 +163,16 @@ public class SampleMediaListFragment extends Fragment {
     final class SampleMediaItem {
         String mUrl;
         String mName;
+        String mDescription;
 
         public SampleMediaItem(String url, String name) {
+            this(url, name, url);
+        }
+
+        public SampleMediaItem(String url, String name, String description) {
             mUrl = url;
             mName = name;
+            mDescription = description;
         }
     }
 
@@ -162,6 +183,10 @@ public class SampleMediaListFragment extends Fragment {
 
         public void addItem(String url, String name) {
             add(new SampleMediaItem(url, name));
+        }
+
+        public void addItem(String url, String name, String description) {
+            add(new SampleMediaItem(url, name, description));
         }
 
         @Override
@@ -186,7 +211,9 @@ public class SampleMediaListFragment extends Fragment {
 
             SampleMediaItem item = getItem(position);
             viewHolder.mNameTextView.setText(item.mName);
-            viewHolder.mUrlTextView.setText(item.mUrl);
+            viewHolder.mUrlTextView.setText(item.mDescription);
+            viewHolder.mUrlTextView.setSingleLine(true);
+            viewHolder.mUrlTextView.setEllipsize(android.text.TextUtils.TruncateAt.END);
 
             return view;
         }

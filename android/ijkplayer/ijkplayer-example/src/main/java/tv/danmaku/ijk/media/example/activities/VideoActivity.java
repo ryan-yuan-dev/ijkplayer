@@ -30,10 +30,16 @@ import androidx.drawerlayout.widget.DrawerLayout;
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.graphics.Insets;
+import androidx.core.view.OnApplyWindowInsetsListener;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowCompat;
+import androidx.core.view.WindowInsetsCompat;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TableLayout;
 import android.widget.TextView;
@@ -78,7 +84,27 @@ public class VideoActivity extends AppCompatActivity implements TracksFragment.I
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
         setContentView(R.layout.activity_player);
+
+        final DrawerLayout drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        ViewCompat.setOnApplyWindowInsetsListener(drawerLayout,
+                new OnApplyWindowInsetsListener() {
+                    @Override
+                    public WindowInsetsCompat onApplyWindowInsets(View v, WindowInsetsCompat insets) {
+                        Insets systemBars =
+                                insets.getInsets(WindowInsetsCompat.Type.systemBars());
+                        if (drawerLayout.getChildCount() > 0) {
+                            View content = drawerLayout.getChildAt(0);
+                            content.setPadding(systemBars.left, systemBars.top, systemBars.right, 0);
+                        }
+                        if (drawerLayout.getChildCount() > 1) {
+                            drawerLayout.getChildAt(1).setPadding(0, systemBars.top, 0, systemBars.bottom);
+                        }
+                        return insets;
+                    }
+                });
 
         mSettings = new Settings(this);
 
