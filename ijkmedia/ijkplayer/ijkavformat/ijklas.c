@@ -61,6 +61,11 @@
 #define H264_NAL_SPS 7
 #define H264_NAL_PPS 8
 
+/* seek handshake: the demuxer thread latches the target and flushes the tag
+ * queue, the download thread waits for that flush before it reconnects. */
+#define LAS_SEEK_FLUSH_WAIT_MS      (100)
+#define LAS_SEEK_FLUSH_TIMEOUT_MS   (5000)
+
 typedef struct AdaptiveConfig {
     int32_t buffer_init;
     double stable_buffer_diff_threshold_second;
@@ -167,6 +172,13 @@ typedef struct PlayList {
     int stream_index_map[MAX_STREAM_NUM];
     int error_code;
     int read_abort_request;
+    /* seek handshake between the demuxer thread (seeker, the same thread that
+     * calls las_read_packet) and the download thread: the seeker latches the
+     * target and flushes the tag queue, the download thread only reconnects
+     * after seek_flushed has been signalled. */
+    int seek_request;
+    int seek_flushed;
+    int64_t seek_pos_ms;
     SDL_Thread _read_thread;
     SDL_Thread* read_thread;
 
@@ -176,6 +188,12 @@ typedef struct PlayList {
 
     SDL_mutex* rw_mutex;
     SDL_mutex* reading_tag_mutex;
+    /* guards gop_reader.realtime_url, which is written by the download thread
+     * and read by the demuxer thread when it reopens the parser after a seek */
+    SDL_mutex* url_mutex;
+    /* url of the gop currently being downloaded: read by the demuxer thread
+     * when it reopens the nested parser after a seek */
+    char current_url[MAX_URL_SIZE];
     // las_mutex is privately used inside of #pragma PlayListLock's setters and getters
     SDL_mutex* las_mutex;
 
@@ -408,14 +426,31 @@ static int TagQueue_put_private(TagQueue* q, FlvTag* tag) {
     return 0;
 }
 
-static int TagQueue_put(TagQueue* q, FlvTag* tag) {
+/**
+ * Enqueue one downloaded tag.
+ *
+ * The abort/seek check and the insert happen under the same mutex the seeker
+ * uses to flush, so a tag from the old position can never survive a seek:
+ * either it is queued before the flush (and then flushed away), or it is
+ * dropped here.
+ *
+ * @return <0 aborted, 0 queued (the queue owns tag->buf),
+ *         >0 a seek is pending (tag dropped, caller should restart the gop)
+ */
+static int TagQueue_put_abortable(PlayList* playlist, TagQueue* q, FlvTag* tag) {
     int ret;
 
     SDL_LockMutex(q->mutex);
-    ret = TagQueue_put_private(q, tag);
+    if (q->abort_request) {
+        ret = -1;
+    } else if (playlist->seek_request) {
+        ret = 1;
+    } else {
+        ret = TagQueue_put_private(q, tag);
+    }
     SDL_UnlockMutex(q->mutex);
 
-    if (ret < 0) {
+    if (ret != 0) {
         FlvTag_dealloc(tag);
     }
 
@@ -1009,6 +1044,7 @@ static int url_block_read(URLContext* url_ctx, uint8_t* buf, int want_len, PlayL
 
 #pragma mark Gop
 void GopReader_init(GopReader* reader, Representation* rep, AVFormatContext* s, PlayList* playlist) {
+    SDL_LockMutex(playlist->url_mutex);
     memset(reader->realtime_url, 0, sizeof(reader->realtime_url));
     strcat(reader->realtime_url, rep->url);
 
@@ -1025,8 +1061,12 @@ void GopReader_init(GopReader* reader, Representation* rep, AVFormatContext* s, 
     if (reader->is_audio_only) {
         strcat(reader->realtime_url, "&audioOnly=true");
     }
+    // keep a copy for the demuxer thread: it reopens the parser after a seek
+    // and must not read a half written url
+    memcpy(playlist->current_url, reader->realtime_url, MAX_URL_SIZE);
     reader->rep_index = rep->index;
     reader->parent = s;
+    SDL_UnlockMutex(playlist->url_mutex);
     log_error("rep->index:%d, realtime_url:%s", rep->index, reader->realtime_url);
 }
 
@@ -1041,8 +1081,10 @@ int GopReader_open_input(GopReader* reader, LasContext* c, PlayList* playlist) {
     av_dict_set(&opts, "http_proxy", c->http_proxy, 0);
     av_dict_set(&opts, "seekable", "0", 0);
 
+    SDL_LockMutex(playlist->url_mutex);
     LasStatistic_on_rep_http_url(c->playlist.las_statistic, reader->realtime_url);
     ret = open_url(c, &reader->input, reader->realtime_url, c->avio_opts, opts, playlist);
+    SDL_UnlockMutex(playlist->url_mutex);
 
     av_dict_free(&opts);
     return ret;
@@ -1107,6 +1149,10 @@ int64_t GopReader_download_gop(GopReader* reader, MultiRateAdaption* adaption, P
     while (1) {
         if (playlist->read_abort_request || playlist->tag_queue.abort_request) {
             return LAS_ERROR_ABORT_BY_USER;
+        }
+        if (playlist->seek_request) {
+            log_info("seek request, close current gop, target=%lldms", playlist->seek_pos_ms);
+            return 0;
         }
         ret = playlist->error_code;
         if (ret < 0) {
@@ -1222,7 +1268,13 @@ int64_t GopReader_download_gop(GopReader* reader, MultiRateAdaption* adaption, P
         tag.audio_only = playlist->gop_reader.is_audio_only;
         tag.switch_index = playlist->gop_reader.switch_index;
 
-        TagQueue_put(&playlist->tag_queue, &tag);
+        ret = TagQueue_put_abortable(playlist, &playlist->tag_queue, &tag);
+        if (ret > 0) {
+            log_info("seek request, stop downloading current gop, target=%lldms", playlist->seek_pos_ms);
+            return 0;
+        } else if (ret < 0) {
+            return LAS_ERROR_ABORT_BY_USER;
+        }
 
         if (rep_changed) {
             rep_changed = false;
@@ -1321,6 +1373,36 @@ static int PlayList_read_thread(void* data) {
     int64_t ret = 0;
 
     while (!tag_queue->abort_request) {
+        // seek requested: the demuxer thread (which runs las_read_packet, i.e.
+        // the same thread that latched the request) flushes the tag queue for
+        // us, we must not reconnect before that flush happened, otherwise the
+        // first tag of the new gop could be dropped and the nested flv parser
+        // would restart on a tag without flv header.
+        if (playlist->seek_request) {
+            SDL_LockMutex(tag_queue->mutex);
+            int waited_ms = 0;
+            while (playlist->seek_request && !playlist->seek_flushed
+                   && !tag_queue->abort_request && waited_ms < LAS_SEEK_FLUSH_TIMEOUT_MS) {
+                SDL_CondWaitTimeout(tag_queue->cond, tag_queue->mutex, LAS_SEEK_FLUSH_WAIT_MS);
+                waited_ms += LAS_SEEK_FLUSH_WAIT_MS;
+            }
+
+            int applied = playlist->seek_flushed && !tag_queue->abort_request;
+            if (applied) {
+                gop_reader->last_gop_start_ts = playlist->seek_pos_ms;
+            } else {
+                log_error("seek flush is not done in %dms, drop this seek request", waited_ms);
+            }
+            // whatever happened, release the request: keeping it set would
+            // make GopReader_download_gop() return at once and spin here.
+            playlist->seek_request = 0;
+            playlist->seek_flushed = 0;
+            int64_t target_ms = playlist->seek_pos_ms;
+            SDL_UnlockMutex(tag_queue->mutex);
+
+            log_info("seek handling done, applied:%d, target:%lldms", applied, target_ms);
+        }
+
         // change GopReader if needed
         int new_index = playlist->multi_rate_adaption.next_expected_rep_index;
         if (!PlayList_is_valid_index_l(playlist, new_index)) {
@@ -1390,8 +1472,14 @@ int PlayList_open_rep(PlayList* playlist, FlvTag* tag, AVFormatContext* s) {
 
     playlist->ctx->fps_probe_size = 0;
 
-    // fix me ,url should be read reading_gop 's url
-    ret = avformat_open_input(&playlist->ctx, playlist->gop_reader.realtime_url, NULL, NULL);
+    // use the snapshot taken by the download thread: reading
+    // gop_reader.realtime_url directly races with GopReader_init()
+    char open_url[MAX_URL_SIZE];
+    SDL_LockMutex(playlist->url_mutex);
+    memcpy(open_url, playlist->current_url, MAX_URL_SIZE);
+    SDL_UnlockMutex(playlist->url_mutex);
+
+    ret = avformat_open_input(&playlist->ctx, open_url, NULL, NULL);
     if (ret < 0) {
         if (playlist->read_thread && playlist->read_thread->retval) {
             log_error("PlayList_read_thread() already Fails!");
@@ -1457,10 +1545,19 @@ int PlayList_open_read_thread(PlayList* playlist) {
     int ret;
     AVFormatContext* s = playlist->outermost_ctx;
     playlist->read_abort_request = 0;
+    playlist->seek_request = 0;
+    playlist->seek_flushed = 0;
+    playlist->seek_pos_ms = 0;
 
     playlist->rw_mutex = SDL_CreateMutex();
     if (!playlist->rw_mutex) {
         log_error("SDL_CreateMutex playlist->rw_mutex fail");
+        return LAS_ERROR_MUTEX_CREATE;
+    }
+
+    playlist->url_mutex = SDL_CreateMutex();
+    if (!playlist->url_mutex) {
+        log_error("SDL_CreateMutex playlist->url_mutex fail");
         return LAS_ERROR_MUTEX_CREATE;
     }
 
@@ -1524,12 +1621,34 @@ static void PlayList_abort(PlayList* playlist) {
     SDL_UnlockMutex(playlist->rw_mutex);
 }
 
-void PlayList_close_rep(PlayList* playlist) {
+/**
+ * Close the nested flv parser without touching the custom AVIOContext.
+ *
+ * playlist->pb is an embedded struct (ffio_init_context), and the flv demuxer
+ * has no AVFMT_NOFILE, so avformat_close_input() would avio_closep() it and
+ * free the embedded struct plus re-enter the network stack. Only used while
+ * the parser has to be dropped and rebuilt, e.g. on seek.
+ */
+static void PlayList_close_parser(PlayList* playlist) {
     SDL_LockMutex(playlist->rw_mutex);
-    avformat_close_input(&playlist->ctx);
+    if (playlist->ctx) {
+        AVFormatContext* ctx = playlist->ctx;
+        playlist->ctx = NULL;
+        // keep the custom AVIOContext alive, it is owned by playlist->pb
+        ctx->pb = NULL;
+        avformat_close_input(&ctx);
+    }
+    // the read buffer belongs to playlist->pb, reclaim it so the next
+    // PlayList_open_rep() allocates a fresh one
     av_freep(&playlist->pb.buffer);
-    log_info("close_index:%d finished", playlist->cur_rep_index);
+    playlist->pb.buffer = NULL;
+    playlist->pb.buffer_size = 0;
     SDL_UnlockMutex(playlist->rw_mutex);
+}
+
+void PlayList_close_rep(PlayList* playlist) {
+    log_info("close_index:%d finished", playlist->cur_rep_index);
+    PlayList_close_parser(playlist);
 }
 
 void PlayList_close_read_thread(PlayList* playlist) {
@@ -1546,6 +1665,7 @@ void PlayList_close_read_thread(PlayList* playlist) {
     playlist->algo_thread = NULL;
 
     SDL_DestroyMutexP(&playlist->rw_mutex);
+    SDL_DestroyMutexP(&playlist->url_mutex);
     SDL_DestroyMutexP(&playlist->reading_tag_mutex);
     SDL_DestroyMutexP(&playlist->las_mutex);
     TagQueue_destroy(&playlist->tag_queue);
@@ -1940,12 +2060,23 @@ static int las_read_packet(AVFormatContext* s, AVPacket* pkt) {
     PlayList* playlist = &c->playlist;
     int ret = 0;
 
-    while (1) {
-        if (!playlist->ctx) {
-            log_error("playlist->ctx is null");
-            ret = AVERROR_EOF;
+    // after a seek the nested parser is gone: wait for the first tag of the new
+    // gop (it embeds the flv header) and rebuild the parser on it
+    if (!playlist->ctx) {
+        ret = PlayList_prepare_reading_tag(playlist);
+        if (ret < 0) {
+            log_error("PlayList_prepare_reading_tag fails after seek");
             goto fail;
         }
+
+        ret = PlayList_open_rep(playlist, &playlist->reading_tag, s);
+        if (ret < 0) {
+            log_error("PlayList_open_rep fails after seek: %s(0x%x)", av_err2str(ret), ret);
+            goto fail;
+        }
+    }
+
+    while (1) {
         ret = av_read_frame(playlist->ctx, &playlist->pkt);
         if (ret < 0) {
             reset_packet(&playlist->pkt);
@@ -1990,9 +2121,68 @@ fail:
     return ret == 0 ? 0 : AVERROR_EXIT;
 }
 
+/**
+ * Seek to an absolute position of the live/flv timeline.
+ *
+ * las has no seekable file: the server is asked for a different gop by
+ * restarting the gop request with startPts=<target>. The download thread picks
+ * the request up at its next gop boundary, so playback resumes from the target
+ * instead of waiting for the old position to be downloaded.
+ */
 static int las_read_seek(AVFormatContext* s, int stream_index,
                           int64_t timestamp, int flags) {
-//    LasContext *c = s->priv_data;
+    LasContext* c = s->priv_data;
+    PlayList* playlist = &c->playlist;
+
+    if (flags & AVSEEK_FLAG_BYTE) {
+        return AVERROR(ENOSYS);
+    }
+
+    if (!playlist->read_thread) {
+        log_error("seek before read thread is started");
+        return AVERROR(ENOSYS);
+    }
+
+    // n7.1: avformat_seek_file() rescales the timestamp into the time base of
+    // the default stream before it calls read_seek (seek_frame_internal), so
+    // the value we get here is in that stream's units, not in AV_TIME_BASE.
+    AVRational tb = {1, AV_TIME_BASE};
+    if (stream_index >= 0 && stream_index < (int)s->nb_streams) {
+        tb = s->streams[stream_index]->time_base;
+    } else {
+        int default_index = av_find_default_stream_index(s);
+        if (default_index >= 0 && default_index < (int)s->nb_streams) {
+            tb = s->streams[default_index]->time_base;
+        }
+    }
+
+    int64_t ts_ms = av_rescale_q(timestamp, tb, (AVRational){1, 1000});
+    if (ts_ms < 0) {
+        ts_ms = 0;
+    }
+
+    SDL_LockMutex(playlist->tag_queue.mutex);
+    playlist->seek_request = 1;
+    playlist->seek_flushed = 0;
+    playlist->seek_pos_ms = ts_ms;
+    SDL_UnlockMutex(playlist->tag_queue.mutex);
+
+    // drop everything of the old position, then wake up the download thread so
+    // it can reconnect with startPts=<target> as soon as possible
+    TagQueue_flush(&playlist->tag_queue);
+
+    SDL_LockMutex(playlist->reading_tag_mutex);
+    FlvTag_dealloc(&playlist->reading_tag);
+    SDL_UnlockMutex(playlist->reading_tag_mutex);
+
+    PlayList_close_parser(playlist);
+
+    SDL_LockMutex(playlist->tag_queue.mutex);
+    playlist->seek_flushed = 1;
+    SDL_CondSignal(playlist->tag_queue.cond);
+    SDL_UnlockMutex(playlist->tag_queue.mutex);
+
+    log_info("seek to %lldms, stream_index:%d", ts_ms, stream_index);
     return 0;
 }
 
