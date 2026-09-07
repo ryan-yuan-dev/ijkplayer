@@ -214,8 +214,8 @@ typedef struct LasContext {
     PlayList playlist;
     LasStatistic las_statistic;
     unsigned session_id;
-    int64_t video_cache_ptr;
-    int64_t audio_cache_ptr;
+    char   *video_cache_ptr;
+    char   *audio_cache_ptr;
     int las_switch_mode;
     int64_t first_audio_packet_pts;
     int block_duration;
@@ -1790,12 +1790,19 @@ static int las_read_header(AVFormatContext* s) {
         goto fail;
     }
     log_info("Finish parsing las manifest, switch_mode:%d", c->las_switch_mode);
-    if (c->audio_cache_ptr && c->video_cache_ptr) {
-        playlist->video_cache = (FFTrackCacheStatistic*)c->video_cache_ptr;
-        playlist->audio_cache = (FFTrackCacheStatistic*)c->audio_cache_ptr;
-    } else {
-        log_error("FFTrackCacheStatistic is null");
-        goto fail;
+    {
+        /* n7.1: pointer values arrive as strings (AV_OPT_TYPE_STRING); the old
+         * INT64 form overflowed FFmpeg's double-based option range check for
+         * high (tagged) user addresses. Recover the raw pointer here. */
+        uintptr_t vcache = c->video_cache_ptr ? strtoull(c->video_cache_ptr, NULL, 0) : 0;
+        uintptr_t acache = c->audio_cache_ptr ? strtoull(c->audio_cache_ptr, NULL, 0) : 0;
+        if (vcache && acache) {
+            playlist->video_cache = (FFTrackCacheStatistic*)vcache;
+            playlist->audio_cache = (FFTrackCacheStatistic*)acache;
+        } else {
+            log_error("FFTrackCacheStatistic is null");
+            goto fail;
+        }
     }
     playlist->las_statistic = &c->las_statistic;
     LasStatistic_init(playlist->las_statistic, playlist);
@@ -2022,11 +2029,11 @@ static const AVOption las_options[] = {
     },
     {
         "video_cache_ptr", "video_cache_ptr",
-        OFFSET(video_cache_ptr), AV_OPT_TYPE_INT64, {.i64 = 0}, INT64_MIN, INT64_MAX, FLAGS
+        OFFSET(video_cache_ptr), AV_OPT_TYPE_STRING, { .str = NULL }, CHAR_MIN, CHAR_MAX, FLAGS
     },
     {
         "audio_cache_ptr", "audio_cache_ptr",
-        OFFSET(audio_cache_ptr), AV_OPT_TYPE_INT64, {.i64 = 0}, INT64_MIN, INT64_MAX, FLAGS
+        OFFSET(audio_cache_ptr), AV_OPT_TYPE_STRING, { .str = NULL }, CHAR_MIN, CHAR_MAX, FLAGS
     },
     {
         "las_switch_mode", "las_switch_mode",
