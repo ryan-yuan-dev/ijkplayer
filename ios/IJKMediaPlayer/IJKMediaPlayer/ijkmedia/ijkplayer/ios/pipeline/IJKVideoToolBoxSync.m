@@ -26,6 +26,7 @@
 #include "ffpipeline_ios.h"
 #include <mach/mach_time.h>
 #include "libavformat/avc.h"
+#include "libavformat/nal.h"
 #include "ijksdl_vout_ios_gles2.h"
 #include "h264_sps_parser.h"
 #include "ijkplayer/ff_ffplay_debug.h"
@@ -515,7 +516,7 @@ static int decode_video_internal(Ijk_VideoToolBox_Opaque* context, AVCodecContex
         if(avio_open_dyn_buf(&pb) < 0) {
             goto failed;
         }
-        ff_avc_parse_nal_units(pb, pData, iSize);
+        ff_nal_parse_units(pb, pData, iSize);
         demux_size = avio_close_dyn_buf(pb, &demux_buff);
         // ALOGI("demux_size:%d\n", demux_size);
         if (demux_size == 0) {
@@ -623,7 +624,9 @@ static inline void DuplicatePkt(Ijk_VideoToolBox_Opaque* context, const AVPacket
         ResetPktBuffer(context);
     }
     AVPacket* avpkt = &context->m_buffer_packet[context->m_buffer_deep];
-    av_copy_packet(avpkt, pkt);
+    /* n7.1: av_copy_packet() removed; use reference counting instead. */
+    av_packet_unref(avpkt);
+    av_packet_ref(avpkt, pkt);
     context->m_buffer_deep++;
 }
 
@@ -667,7 +670,17 @@ static int decode_video(Ijk_VideoToolBox_Opaque* context, AVCodecContext *avctx,
                 return ret;
             }
 
-            ret = avcodec_decode_video2(new_avctx, frame, &got_picture, avpkt);
+            /* n7.1: avcodec_decode_video2() replaced by send/receive pair. */
+            ret = avcodec_send_packet(new_avctx, avpkt);
+            if (ret >= 0) {
+                ret = avcodec_receive_frame(new_avctx, frame);
+                if (ret == AVERROR(EAGAIN) || ret == AVERROR_EOF) {
+                    ret = 0;
+                    got_picture = 0;
+                } else if (ret >= 0) {
+                    got_picture = 1;
+                }
+            }
             if (ret < 0) {
                 avcodec_free_context(&new_avctx);
                 return ret;
@@ -855,7 +868,8 @@ int videotoolbox_sync_decode_frame(Ijk_VideoToolBox_Opaque* context)
                 }
             } while (ffp_is_flush_packet(&pkt) || d->queue->serial != d->pkt_serial);
 
-            av_packet_split_side_data(&pkt);
+            /* n7.1: av_packet_split_side_data() removed; side data now travels
+             * inside the packet itself. */
 
             av_packet_unref(&d->pkt);
             d->pkt_temp = d->pkt = pkt;

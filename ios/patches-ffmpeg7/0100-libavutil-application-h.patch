@@ -3,7 +3,7 @@ new file mode 100644
 index 0000000000..3cc681bf8f
 --- /dev/null
 +++ b/libavutil/application.h
-@@ -0,0 +1,122 @@
+@@ -0,0 +1,123 @@
 +/*
 + * copyright (c) 2016 Zhang Rui
 + *
@@ -27,6 +27,7 @@ index 0000000000..3cc681bf8f
 +#ifndef AVUTIL_APPLICATION_H
 +#define AVUTIL_APPLICATION_H
 +#include <stdint.h>
++#include <stddef.h>
 +
 +#include "libavutil/log.h"
 +

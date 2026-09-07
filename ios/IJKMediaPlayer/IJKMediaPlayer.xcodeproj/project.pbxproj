@@ -709,7 +709,7 @@
 				E6903FC117EAFC2C00CFD954 /* lib */,
 			);
 			name = ffmpeg;
-			path = ../../build/universal;
+			path = "../../build/$(FF_TARGET_SUBDIR)";
 			sourceTree = "<group>";
 		};
 		E6903FC117EAFC2C00CFD954 /* lib */ = {
@@ -1445,17 +1445,26 @@
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/IJKMediaFrameworkWithSSL.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				FF_TARGET_SUBDIR = universal;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../build/universal/lib\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib\"",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				OTHER_LDFLAGS = (
 					"-read_only_relocs",
 					suppress,
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libcrypto.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libssl.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavcodec.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavfilter.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavformat.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavutil.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswresample.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswscale.a\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "tv.danmaku.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1496,17 +1505,26 @@
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/IJKMediaFrameworkWithSSL.plist";
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
+				FF_TARGET_SUBDIR = universal;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../build/universal/lib\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib\"",
 				);
 				MACH_O_TYPE = mh_dylib;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				OTHER_LDFLAGS = (
 					"-read_only_relocs",
 					suppress,
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libcrypto.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libssl.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavcodec.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavfilter.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavformat.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavutil.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswresample.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswscale.a\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "tv.danmaku.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -1550,14 +1568,25 @@
 				);
 				INFOPLIST_FILE = IJKMediaFramework/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				FF_TARGET_SUBDIR = universal;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../build/universal/lib\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib\"",
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = YES;
+				OTHER_LDFLAGS = (
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libcrypto.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libssl.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavcodec.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavfilter.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavformat.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavutil.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswresample.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswscale.a\"",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "tv.danmaku.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1596,14 +1625,25 @@
 				);
 				INFOPLIST_FILE = IJKMediaFramework/Info.plist;
 				INSTALL_PATH = "$(LOCAL_LIBRARY_DIR)/Frameworks";
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				FF_TARGET_SUBDIR = universal;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @loader_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../build/universal/lib\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib\"",
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				OTHER_LDFLAGS = (
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libcrypto.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libssl.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavcodec.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavfilter.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavformat.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libavutil.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswresample.a\"",
+					"\"$(SRCROOT)/../build/$(FF_TARGET_SUBDIR)/lib/libswscale.a\"",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "tv.danmaku.$(PRODUCT_NAME:rfc1034identifier)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1708,7 +1748,8 @@
 				GCC_WARN_SHADOW = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				FF_TARGET_SUBDIR = universal;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				STRIP_INSTALLED_PRODUCT = NO;
@@ -1739,7 +1780,8 @@
 				GCC_WARN_SHADOW = YES;
 				GCC_WARN_UNINITIALIZED_AUTOS = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 7.0;
+				FF_TARGET_SUBDIR = universal;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
 				SDKROOT = iphoneos;
 				STRIP_INSTALLED_PRODUCT = NO;
 				VALIDATE_PRODUCT = YES;

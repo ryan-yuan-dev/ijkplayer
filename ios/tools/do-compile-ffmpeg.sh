@@ -39,7 +39,7 @@ FF_BUILD_OPT=$2
 echo "FF_ARCH=$FF_ARCH"
 echo "FF_BUILD_OPT=$FF_BUILD_OPT"
 if [ -z "$FF_ARCH" ]; then
-    echo "You must specific an architecture 'armv7, armv7s, arm64, i386, x86_64, ...'.\n"
+    echo "You must specific an architecture 'arm64, arm64-sim, x86_64-sim'.\n"
     exit 1
 fi
 
@@ -69,19 +69,18 @@ FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --enable-cross-compile"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-stripping"
 
 ##
-FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --arch=$FF_ARCH"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --target-os=$FF_TAGET_OS"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --enable-static"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --disable-shared"
 FFMPEG_EXTRA_CFLAGS=
 
-# i386, x86_64
+# x86_64-sim
 FFMPEG_CFG_FLAGS_SIMULATOR=
 FFMPEG_CFG_FLAGS_SIMULATOR="$FFMPEG_CFG_FLAGS_SIMULATOR --disable-asm"
 FFMPEG_CFG_FLAGS_SIMULATOR="$FFMPEG_CFG_FLAGS_SIMULATOR --disable-mmx"
 FFMPEG_CFG_FLAGS_SIMULATOR="$FFMPEG_CFG_FLAGS_SIMULATOR --assert-level=2"
 
-# armv7, armv7s, arm64
+# arm64, arm64-sim
 FFMPEG_CFG_FLAGS_ARM=
 FFMPEG_CFG_FLAGS_ARM="$FFMPEG_CFG_FLAGS_ARM --enable-pic"
 FFMPEG_CFG_FLAGS_ARM="$FFMPEG_CFG_FLAGS_ARM --enable-neon"
@@ -117,46 +116,34 @@ echo "===================="
 FF_BUILD_NAME="unknown"
 FF_XCRUN_PLATFORM="iPhoneOS"
 FF_XCRUN_OSVERSION=
+FF_XCRUN_ARCH=
 FF_GASPP_EXPORT=
 FF_DEP_OPENSSL_INC=
 FF_DEP_OPENSSL_LIB=
 FF_XCODE_BITCODE=
 
-if [ "$FF_ARCH" = "i386" ]; then
-    FF_BUILD_NAME="ffmpeg-i386"
-    FF_BUILD_NAME_OPENSSL=openssl-i386
+if [ "$FF_ARCH" = "x86_64-sim" ]; then
+    FF_BUILD_NAME="ffmpeg-x86_64-sim"
+    FF_BUILD_NAME_OPENSSL=openssl-x86_64-sim
     FF_XCRUN_PLATFORM="iPhoneSimulator"
-    FF_XCRUN_OSVERSION="-mios-simulator-version-min=6.0"
+    FF_XCRUN_ARCH=x86_64
+    FF_XCRUN_OSVERSION="-mios-simulator-version-min=13.0"
     FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_SIMULATOR"
-elif [ "$FF_ARCH" = "x86_64" ]; then
-    FF_BUILD_NAME="ffmpeg-x86_64"
-    FF_BUILD_NAME_OPENSSL=openssl-x86_64
-    FF_XCRUN_PLATFORM="iPhoneSimulator"
-    FF_XCRUN_OSVERSION="-mios-simulator-version-min=7.0"
-    FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_SIMULATOR"
-elif [ "$FF_ARCH" = "armv7" ]; then
-    FF_BUILD_NAME="ffmpeg-armv7"
-    FF_BUILD_NAME_OPENSSL=openssl-armv7
-    FF_XCRUN_OSVERSION="-miphoneos-version-min=6.0"
-    FF_XCODE_BITCODE="-fembed-bitcode"
-    FFMPEG_CFG_FLAGS_ARM="$FFMPEG_CFG_FLAGS_ARM --disable-asm"
-    FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_ARM"
-#    FFMPEG_CFG_CPU="--cpu=cortex-a8"
-elif [ "$FF_ARCH" = "armv7s" ]; then
-    FF_BUILD_NAME="ffmpeg-armv7s"
-    FF_BUILD_NAME_OPENSSL=openssl-armv7s
-    FFMPEG_CFG_CPU="--cpu=swift"
-    FF_XCRUN_OSVERSION="-miphoneos-version-min=6.0"
-    FF_XCODE_BITCODE="-fembed-bitcode"
-    FFMPEG_CFG_FLAGS_ARM="$FFMPEG_CFG_FLAGS_ARM --disable-asm"
-    FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_ARM"
 elif [ "$FF_ARCH" = "arm64" ]; then
     FF_BUILD_NAME="ffmpeg-arm64"
     FF_BUILD_NAME_OPENSSL=openssl-arm64
-    FF_XCRUN_OSVERSION="-miphoneos-version-min=7.0"
+    FF_XCRUN_ARCH=arm64
+    FF_XCRUN_OSVERSION="-miphoneos-version-min=13.0"
     FF_XCODE_BITCODE="-fembed-bitcode"
     FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_ARM"
     FF_GASPP_EXPORT="GASPP_FIX_XCODE5=1"
+elif [ "$FF_ARCH" = "arm64-sim" ]; then
+    FF_BUILD_NAME="ffmpeg-arm64-sim"
+    FF_BUILD_NAME_OPENSSL=openssl-arm64-sim
+    FF_XCRUN_PLATFORM="iPhoneSimulator"
+    FF_XCRUN_ARCH=arm64
+    FF_XCRUN_OSVERSION="-mios-simulator-version-min=13.0"
+    FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_FLAGS_ARM"
 else
     echo "unknown architecture $FF_ARCH";
     exit 1
@@ -174,6 +161,7 @@ echo "===================="
 FF_BUILD_SOURCE="$FF_BUILD_ROOT/$FF_BUILD_NAME"
 FF_BUILD_PREFIX="$FF_BUILD_ROOT/build/$FF_BUILD_NAME/output"
 
+FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --arch=$FF_XCRUN_ARCH"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS --prefix=$FF_BUILD_PREFIX"
 
 mkdir -p $FF_BUILD_PREFIX
@@ -191,7 +179,7 @@ FF_XCRUN_CC="xcrun -sdk $FF_XCRUN_SDK clang"
 FFMPEG_CFG_FLAGS="$FFMPEG_CFG_FLAGS $FFMPEG_CFG_CPU"
 
 FFMPEG_CFLAGS=
-FFMPEG_CFLAGS="$FFMPEG_CFLAGS -arch $FF_ARCH"
+FFMPEG_CFLAGS="$FFMPEG_CFLAGS -arch $FF_XCRUN_ARCH"
 FFMPEG_CFLAGS="$FFMPEG_CFLAGS $FF_XCRUN_OSVERSION"
 FFMPEG_CFLAGS="$FFMPEG_CFLAGS $FFMPEG_EXTRA_CFLAGS"
 FFMPEG_CFLAGS="$FFMPEG_CFLAGS $FF_XCODE_BITCODE"

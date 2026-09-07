@@ -46,11 +46,27 @@ do_lipo () {
     LIPO_FLAGS=
     for ARCH in $FF_ALL_ARCHS
     do
+        case "$ARCH" in *-sim) continue ;; esac
         LIPO_FLAGS="$LIPO_FLAGS $UNI_BUILD_ROOT/build/openssl-$ARCH/output/lib/$LIB_FILE"
     done
 
     xcrun lipo -create $LIPO_FLAGS -output $UNI_BUILD_ROOT/build/universal/lib/$LIB_FILE
     xcrun lipo -info $UNI_BUILD_ROOT/build/universal/lib/$LIB_FILE
+}
+
+do_lipo_sim () {
+    LIB_FILE=$1
+    LIPO_FLAGS=
+    for ARCH in $FF_ALL_ARCHS
+    do
+        case "$ARCH" in *-sim) LIPO_FLAGS="$LIPO_FLAGS $UNI_BUILD_ROOT/build/openssl-$ARCH/output/lib/$LIB_FILE" ;; esac
+    done
+
+    if [ -n "$LIPO_FLAGS" ]; then
+        mkdir -p $UNI_BUILD_ROOT/build/universal-sim/lib
+        xcrun lipo -create $LIPO_FLAGS -output $UNI_BUILD_ROOT/build/universal-sim/lib/$LIB_FILE
+        xcrun lipo -info $UNI_BUILD_ROOT/build/universal-sim/lib/$LIB_FILE
+    fi
 }
 
 do_lipo_all () {
@@ -59,9 +75,17 @@ do_lipo_all () {
     for FF_LIB in $FF_LIBS
     do
         do_lipo "$FF_LIB.a";
+        do_lipo_sim "$FF_LIB.a";
     done
 
     cp -R $UNI_BUILD_ROOT/build/openssl-arm64/output/include $UNI_BUILD_ROOT/build/universal/
+    for ARCH in $FF_ALL_ARCHS
+    do
+        case "$ARCH" in *-sim)
+            cp -R $UNI_BUILD_ROOT/build/openssl-$ARCH/output/include $UNI_BUILD_ROOT/build/universal-sim/
+            break
+        ;; esac
+    done
 }
 
 #----------

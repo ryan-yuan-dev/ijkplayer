@@ -2,11 +2,12 @@ diff --git a/libavformat/Makefile b/libavformat/Makefile
 index 7ca68a7036..73776e87c1 100644
 --- a/libavformat/Makefile
 +++ b/libavformat/Makefile
-@@ -4,6 +4,15 @@ DESC = FFmpeg container format library
+@@ -4,6 +4,16 @@ DESC = FFmpeg container format library
  HEADERS = avformat.h                                                    \
            avio.h                                                        \
            version.h                                                     \
 +          avc.h                                                         \
++          nal.h                                                         \
 +          url.h                                                         \
 +          demux.h                                                         \
 +          internal.h                                                    \

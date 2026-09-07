@@ -17,6 +17,14 @@
 #
 # M2+: ndk-build replaced by CMake (Ninja) via the NDK toolchain file.
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+IJK_ROOT=$(dirname "$SCRIPT_DIR")
+
+# Derive ANDROID_NDK from ANDROID_HOME/ndk/28.* when not exported explicitly.
+if [ -f "$SCRIPT_DIR/tools/env-ndk.sh" ]; then
+    . "$SCRIPT_DIR/tools/env-ndk.sh"
+fi
+
 if [ -z "$ANDROID_NDK" -o -z "$ANDROID_NDK" ]; then
     echo "You must define ANDROID_NDK, ANDROID_SDK before starting."
     echo "They must point to your NDK and SDK directories.\n"
@@ -28,8 +36,6 @@ REQUEST_SUB_CMD=$2
 # modernized: arm64 + x86_64 only (armv5/armv7a/x86 pruned)
 ACT_ABI_ALL="arm64 x86_64"
 UNAME_S=$(uname -s)
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-IJK_ROOT=$(dirname "$SCRIPT_DIR")
 
 # Pre-generate ijkversion.h; keeps it fresh even when CMake's execute_process
 # hook cannot find a POSIX sh (e.g. Gradle builds without one).
@@ -96,6 +102,15 @@ do_build () {
 
     mkdir -p "$MAIN_DIR/libs/$CMAKE_ABI"
     find "$BUILD_DIR" -name "libijk*.so" -exec cp {} "$MAIN_DIR/libs/$CMAKE_ABI/" \;
+    # libijkffmpeg.so is a prebuilt IMPORTED library (see src/main/jni/CMakeLists.txt);
+    # copy it alongside the CMake-built libs so the APK ships all three.
+    IJK_FFMPEG_SO="$SCRIPT_DIR/contrib/build/ffmpeg-$PARAM_TARGET/output/libijkffmpeg.so"
+    if [ -f "$IJK_FFMPEG_SO" ]; then
+        cp "$IJK_FFMPEG_SO" "$MAIN_DIR/libs/$CMAKE_ABI/"
+    else
+        echo "!! libijkffmpeg.so not found at $IJK_FFMPEG_SO; run compile-ffmpeg.sh first"
+        return 1
+    fi
     echo "installed: $MAIN_DIR/libs/$CMAKE_ABI/lib{ijkplayer,ijksdl,ijkffmpeg}.so"
 }
 

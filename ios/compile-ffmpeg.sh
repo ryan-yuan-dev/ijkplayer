@@ -19,11 +19,9 @@
 #----------
 # modify for your build tool
 
-FF_ALL_ARCHS_IOS6_SDK="armv7 armv7s i386"
-FF_ALL_ARCHS_IOS7_SDK="armv7 armv7s arm64 i386 x86_64"
-FF_ALL_ARCHS_IOS8_SDK="armv7 arm64 i386 x86_64"
+FF_ALL_ARCHS_IOS13_SDK="arm64 arm64-sim x86_64-sim"
 
-FF_ALL_ARCHS=$FF_ALL_ARCHS_IOS8_SDK
+FF_ALL_ARCHS=$FF_ALL_ARCHS_IOS13_SDK
 
 #----------
 UNI_BUILD_ROOT=`pwd`
@@ -44,9 +42,11 @@ echo_archs() {
 FF_LIBS="libavcodec libavfilter libavformat libavutil libswscale libswresample"
 do_lipo_ffmpeg () {
     LIB_FILE=$1
+    DEST_DIR=$2
     LIPO_FLAGS=
     for ARCH in $FF_ALL_ARCHS
     do
+        case "$ARCH" in *-sim) continue ;; esac
         ARCH_LIB_FILE="$UNI_BUILD_ROOT/build/ffmpeg-$ARCH/output/lib/$LIB_FILE"
         if [ -f "$ARCH_LIB_FILE" ]; then
             LIPO_FLAGS="$LIPO_FLAGS $ARCH_LIB_FILE"
@@ -55,16 +55,21 @@ do_lipo_ffmpeg () {
         fi
     done
 
-    xcrun lipo -create $LIPO_FLAGS -output $UNI_BUILD_ROOT/build/universal/lib/$LIB_FILE
-    xcrun lipo -info $UNI_BUILD_ROOT/build/universal/lib/$LIB_FILE
+    if [ "$LIPO_FLAGS" != "" ]; then
+        mkdir -p "$DEST_DIR"
+        xcrun lipo -create $LIPO_FLAGS -output "$DEST_DIR/$LIB_FILE"
+        xcrun lipo -info "$DEST_DIR/$LIB_FILE"
+    fi
 }
 
 SSL_LIBS="libcrypto libssl"
 do_lipo_ssl () {
     LIB_FILE=$1
+    DEST_DIR=$2
     LIPO_FLAGS=
     for ARCH in $FF_ALL_ARCHS
     do
+        case "$ARCH" in *-sim) continue ;; esac
         ARCH_LIB_FILE="$UNI_BUILD_ROOT/build/openssl-$ARCH/output/lib/$LIB_FILE"
         if [ -f "$ARCH_LIB_FILE" ]; then
             LIPO_FLAGS="$LIPO_FLAGS $ARCH_LIB_FILE"
@@ -74,8 +79,9 @@ do_lipo_ssl () {
     done
 
     if [ "$LIPO_FLAGS" != "" ]; then
-        xcrun lipo -create $LIPO_FLAGS -output $UNI_BUILD_ROOT/build/universal/lib/$LIB_FILE
-        xcrun lipo -info $UNI_BUILD_ROOT/build/universal/lib/$LIB_FILE
+        mkdir -p "$DEST_DIR"
+        xcrun lipo -create $LIPO_FLAGS -output "$DEST_DIR/$LIB_FILE"
+        xcrun lipo -info "$DEST_DIR/$LIB_FILE"
     fi
 }
 
@@ -84,7 +90,7 @@ do_lipo_all () {
     echo "lipo archs: $FF_ALL_ARCHS"
     for FF_LIB in $FF_LIBS
     do
-        do_lipo_ffmpeg "$FF_LIB.a";
+        do_lipo_ffmpeg "$FF_LIB.a" "$UNI_BUILD_ROOT/build/universal/lib";
     done
 
     ANY_ARCH=
@@ -112,16 +118,105 @@ do_lipo_all () {
 
     for SSL_LIB in $SSL_LIBS
     do
-        do_lipo_ssl "$SSL_LIB.a";
+        do_lipo_ssl "$SSL_LIB.a" "$UNI_BUILD_ROOT/build/universal/lib";
     done
+
+    # device and arm64 simulator slices share the arm64 CPU type and cannot
+    # be merged into one fat binary; keep a separate simulator universal tree
+    SIM_ARCHS=
+    DEV_ARM64=
+    for ARCH in $FF_ALL_ARCHS
+    do
+        case "$ARCH" in
+            *-sim) SIM_ARCHS="$SIM_ARCHS $ARCH" ;;
+            arm64) DEV_ARM64=1 ;;
+        esac
+    done
+
+    if [ -n "$SIM_ARCHS" ]; then
+        SIM_UNI_ROOT="$UNI_BUILD_ROOT/build/universal-sim"
+        mkdir -p "$SIM_UNI_ROOT/lib"
+        echo "lipo sim archs:$SIM_ARCHS"
+
+        SIM_LIPO=
+        for ARCH in $SIM_ARCHS
+        do
+            SIM_LIB="$UNI_BUILD_ROOT/build/ffmpeg-$ARCH/output/lib"
+            for FF_LIB in $FF_LIBS
+            do
+                if [ -f "$SIM_LIB/$FF_LIB.a" ]; then
+                    SIM_LIPO=1
+                fi
+            done
+        done
+
+        if [ -n "$SIM_LIPO" ]; then
+            for FF_LIB in $FF_LIBS
+            do
+                do_lipo_ffmpeg_sim "$FF_LIB.a" "$SIM_ARCHS" "$SIM_UNI_ROOT/lib";
+            done
+            for SSL_LIB in $SSL_LIBS
+            do
+                do_lipo_ssl_sim "$SSL_LIB.a" "$SIM_ARCHS" "$SIM_UNI_ROOT/lib";
+            done
+
+            ANY_SIM_ARCH=${SIM_ARCHS%% *}
+            if [ -d "$UNI_BUILD_ROOT/build/ffmpeg-$ANY_SIM_ARCH/output/include" ]; then
+                cp -R "$UNI_BUILD_ROOT/build/ffmpeg-$ANY_SIM_ARCH/output/include" "$SIM_UNI_ROOT/"
+                SIM_INC_DIR="$SIM_UNI_ROOT/include"
+                mkdir -p "$SIM_INC_DIR/libavutil/$ANY_SIM_ARCH"
+                cp -f "$UNI_BUILD_ROOT/build/ffmpeg-$ANY_SIM_ARCH/output/include/libavutil/avconfig.h" "$SIM_INC_DIR/libavutil/$ANY_SIM_ARCH/avconfig.h"
+                cp -f tools/avconfig.h                      "$SIM_INC_DIR/libavutil/avconfig.h"
+                cp -f "$UNI_BUILD_ROOT/build/ffmpeg-$ANY_SIM_ARCH/output/include/libavutil/ffversion.h" "$SIM_INC_DIR/libavutil/$ANY_SIM_ARCH/ffversion.h"
+                cp -f tools/ffversion.h                     "$SIM_INC_DIR/libavutil/ffversion.h"
+                mkdir -p "$SIM_INC_DIR/libffmpeg/$ANY_SIM_ARCH"
+                cp -f "$UNI_BUILD_ROOT/build/ffmpeg-$ANY_SIM_ARCH/output/include/libffmpeg/config.h" "$SIM_INC_DIR/libffmpeg/$ANY_SIM_ARCH/config.h"
+                cp -f tools/config.h                        "$SIM_INC_DIR/libffmpeg/config.h"
+            fi
+        fi
+    fi
+}
+
+do_lipo_ffmpeg_sim () {
+    LIB_FILE=$1
+    SIM_ARCHS=$2
+    DEST_DIR=$3
+    LIPO_FLAGS=
+    for ARCH in $SIM_ARCHS
+    do
+        ARCH_LIB_FILE="$UNI_BUILD_ROOT/build/ffmpeg-$ARCH/output/lib/$LIB_FILE"
+        if [ -f "$ARCH_LIB_FILE" ]; then
+            LIPO_FLAGS="$LIPO_FLAGS $ARCH_LIB_FILE"
+        fi
+    done
+
+    if [ "$LIPO_FLAGS" != "" ]; then
+        xcrun lipo -create $LIPO_FLAGS -output "$DEST_DIR/$LIB_FILE"
+        xcrun lipo -info "$DEST_DIR/$LIB_FILE"
+    fi
+}
+
+do_lipo_ssl_sim () {
+    LIB_FILE=$1
+    SIM_ARCHS=$2
+    DEST_DIR=$3
+    LIPO_FLAGS=
+    for ARCH in $SIM_ARCHS
+    do
+        ARCH_LIB_FILE="$UNI_BUILD_ROOT/build/openssl-$ARCH/output/lib/$LIB_FILE"
+        if [ -f "$ARCH_LIB_FILE" ]; then
+            LIPO_FLAGS="$LIPO_FLAGS $ARCH_LIB_FILE"
+        fi
+    done
+
+    if [ "$LIPO_FLAGS" != "" ]; then
+        xcrun lipo -create $LIPO_FLAGS -output "$DEST_DIR/$LIB_FILE"
+        xcrun lipo -info "$DEST_DIR/$LIB_FILE"
+    fi
 }
 
 #----------
-if [ "$FF_TARGET" = "armv7" -o "$FF_TARGET" = "armv7s" -o "$FF_TARGET" = "arm64" ]; then
-    echo_archs
-    sh tools/do-compile-ffmpeg.sh $FF_TARGET $FF_TARGET_EXTRA
-    do_lipo_all
-elif [ "$FF_TARGET" = "i386" -o "$FF_TARGET" = "x86_64" ]; then
+if [ "$FF_TARGET" = "arm64" -o "$FF_TARGET" = "arm64-sim" -o "$FF_TARGET" = "x86_64-sim" ]; then
     echo_archs
     sh tools/do-compile-ffmpeg.sh $FF_TARGET $FF_TARGET_EXTRA
     do_lipo_all
@@ -156,8 +251,7 @@ elif [ "$FF_TARGET" = "clean" ]; then
     echo "clean success"
 else
     echo "Usage:"
-    echo "  compile-ffmpeg.sh armv7|arm64|i386|x86_64"
-    echo "  compile-ffmpeg.sh armv7s (obselete)"
+    echo "  compile-ffmpeg.sh arm64|arm64-sim|x86_64-sim"
     echo "  compile-ffmpeg.sh lipo"
     echo "  compile-ffmpeg.sh all"
     echo "  compile-ffmpeg.sh clean"

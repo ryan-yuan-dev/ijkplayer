@@ -8,6 +8,10 @@ tag next
 - android: gradle modernized to AGP 8.10.1 / Gradle 8.11.1 / AndroidX / media3
 - android: ijkplayer-exo rewritten over androidx.media3 (exoplayer r1.5 wrapper retired)
 - android: example app migrated to AndroidX, arm64/x86_64 only
+- ios: build scripts modernized to arm64/arm64-sim/x86_64-sim, universal split device/simulator
+- ios: deployment target raised to iOS 13, FF_TARGET_SUBDIR build setting for dual SDK libs
+- ios: VideoToolBox pipeline ported to n7.1 (ff_nal_parse_units, send/receive decode)
+- tools: verify-all.sh one-shot full-chain verification (Android + iOS), replaces CI gate
 
 
 tag k0.8.8-ffmpeg4.0 (upstream)
